@@ -134,6 +134,9 @@
 /* The title of the section containing algorithm settings */
 "Algorithm Settings" = "Algoritminställningar";
 
+/* Label for carb quantity entry row on carb entry screen */
+"Amount Consumed" = "Mängd";
+
 /* The title of the Amplitude service */
 "Amplitude" = "Amplitude";
 
