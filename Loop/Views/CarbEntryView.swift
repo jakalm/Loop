@@ -106,7 +106,7 @@ struct CarbEntryView: View, HorizontalSizeClassOverride {
 
             CardSectionDivider()
             
-            DatePickerRow(date: $viewModel.time, isFocused: timeFocused, minimumDate: viewModel.minimumDate, maximumDate: viewModel.maximumDate)
+            DatePickerRow(date: $viewModel.time, isFocused: timeFocused, title: NSLocalizedString("Time", comment: "Label for time entry row on carb entry screen"), minimumDate: viewModel.minimumDate, maximumDate: viewModel.maximumDate)
             
             CardSectionDivider()
             
