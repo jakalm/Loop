@@ -749,9 +749,6 @@
 /* Title text for button to Therapy Settings */
 "Therapy Settings" = "Behandlingsinställningar";
 
-/* Title of the carb entry date picker cell */
-"Time" = "tid";
-
 /* Critical event log export error alert try again button */
 "Try Again" = "Försök igen";
 

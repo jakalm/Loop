@@ -93,19 +93,19 @@ struct AddEditFavoriteFoodView: View {
             let foodTypeFocused: Binding<Bool> = Binding(get: { expandedRow == .foodType }, set: { expandedRow = $0 ? .foodType : nil })
             let absorptionTimeFocused: Binding<Bool> = Binding(get: { expandedRow == .absorptionTime }, set: { expandedRow = $0 ? .absorptionTime : nil })
             
-            TextFieldRow(text: $viewModel.name, isFocused: nameFocused, title: "Name", placeholder: "Apple")
+            TextFieldRow(text: $viewModel.name, isFocused: nameFocused, title: NSLocalizedString("Name", comment: "Label for name row on add favorite food screen"), placeholder: NSLocalizedString("Apple", comment: "Default name on add favorite food screen"))
             
             CardSectionDivider()
 
-            CarbQuantityRow(quantity: $viewModel.carbsQuantity, isFocused: carbQuantityFocused, title: "Carb Quantity", preferredCarbUnit: viewModel.preferredCarbUnit)
+            CarbQuantityRow(quantity: $viewModel.carbsQuantity, isFocused: carbQuantityFocused, title: NSLocalizedString("Carb Quantity", comment: "Label for carb quantity row on add favorite food screen"), preferredCarbUnit: viewModel.preferredCarbUnit)
             
             CardSectionDivider()
             
-            EmojiRow(text: $viewModel.foodType, isFocused: foodTypeFocused, emojiType: .food, title: "Food Type")
+            EmojiRow(text: $viewModel.foodType, isFocused: foodTypeFocused, emojiType: .food, title: NSLocalizedString("Food Type", comment: "Label for food type entry on add favorite food screen"))
             
             CardSectionDivider()
 
-            AbsorptionTimePickerRow(absorptionTime: $viewModel.absorptionTime, isFocused: absorptionTimeFocused, validDurationRange: viewModel.absorptionRimesRange, showHowAbsorptionTimeWorks: $showHowAbsorptionTimeWorks)
+            AbsorptionTimePickerRow(absorptionTime: $viewModel.absorptionTime, isFocused: absorptionTimeFocused, title: NSLocalizedString("Absorption Time", comment: "Label for absorption time entry row on add favorite food screen"), validDurationRange: viewModel.absorptionRimesRange, showHowAbsorptionTimeWorks: $showHowAbsorptionTimeWorks)
                 .padding(.bottom, 2)
         }
         .padding(.vertical, 12)
