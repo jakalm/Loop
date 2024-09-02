@@ -89,6 +89,9 @@
 /* Alert message for a missing pump error */
 "A pump must be configured before a bolus can be delivered." = "En pump måste ha lagts till och konfigurerats innan en bolus ge ges.";
 
+/* Title of the carb entry absorption time cell */
+"Absorption Time" = "Absorptionstid";
+
 /* Action to copy the recommended Bolus value to the actual Bolus Field */
 "AcceptRecommendedBolus" = "AcceptRecommendedBolus";
 
@@ -422,11 +425,17 @@
 /* The alert title for a resume error */
 "Failed to Resume Insulin Delivery" = "Misslyckades att återuppta insulintillförsel";
 
+/* Favorite food header in carb entry screen */
+"FAVORITE FOODS" = "Favoritmat";
+
 /* Title of insulin model preset */
 "Fiasp" = "Fiasp";
 
 /* Label for manual glucose entry row on bolus screen */
 "Fingerstick Glucose" = "Kapillärt blodsocker";
+
+/* Title of the carb entry food type row */
+"Food Type" = "Typ av mat";
 
 /* The format string used to describe a finite workout targets duration */
 "For %1$@" = "I %1$@";
@@ -673,8 +682,14 @@
 /* The title of the notification action to retry a bolus command */
 "Retry" = "Försök igen";
 
+/* Save button in favorite foods */
+"Save" = "Spara";
+
 /* Button text to save carbs and/or manual glucose entry and deliver a bolus */
 "Save and Deliver" = "Spara och ge";
+
+/* Entry button to save as favorite food */
+"Save as favorite food" = "Spara som favoritmat";
 
 /* Button text to save carbs and/or manual glucose entry without a bolus */
 "Save without Bolusing" = "Spara utan att ge bolus";
@@ -748,6 +763,9 @@
 
 /* Title text for button to Therapy Settings */
 "Therapy Settings" = "Behandlingsinställningar";
+
+/* Title of the carb entry date picker cell */
+"Time" = "Tid";
 
 /* Critical event log export error alert try again button */
 "Try Again" = "Försök igen";
