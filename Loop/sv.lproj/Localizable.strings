@@ -131,8 +131,15 @@
 "Adjusted for" = "Justerad för";
 
 /* Alert Permissions button text
+   Title of alert management screen */
+"Alert Management" = "Hantera Varningar";
+
+/* Alert Permissions button text
    Notification & Critical Alert Permissions screen title */
 "Alert Permissions" = "Behörigheter för Varningar";
+
+/* Alert Permissions button descriptive text */
+"Alert Permissions and Mute Alerts" = "Behörigheter för Varningar och tysta Varningar";
 
 /* The title of the section containing algorithm settings */
 "Algorithm Settings" = "Algoritminställningar";
@@ -191,6 +198,9 @@
 /* The title of the basal rate profile screen
    The title text for the basal rate schedule */
 "Basal Rates" = "Basaldoser";
+
+/* Caption for bolus screen notice when no bolus is recommended for the predicted glucose */
+"Based on your predicted glucose, no bolus is recommended." = "Baserat på ditt förväntade glukosvärde rekommenderas ingen bolus.";
 
 /* Message to the user to that the bluetooth is off */
 "Bluetooth\nOff" = "Bluetooth Av";
@@ -443,6 +453,9 @@
 /* The short unit display string for grams */
 "g" = "g";
 
+/* Support button for Therapy Settings */
+"Get help with Therapy Settings" = "Få hjälp med behandlingsinställningar";
+
 /* The title of the glucose and prediction graph */
 "Glucose" = "Glukos";
 
@@ -454,6 +467,9 @@
 
 /* Alert title when glucose data returns while on bolus screen */
 "Glucose Data Now Available" = "Blodglukosvärde finns nu tillgängligt";
+
+/* Description of the prediction input effect for suspension of insulin delivery */
+"Glucose effect of suspending insulin delivery" = "Glukoseffekt av att pausa insulintillförsel";
 
 /* Alert title for a manual glucose entry out of range error
    Title for bolus screen warning when glucose entry is out of range */
@@ -537,8 +553,14 @@
 /* Description string for temp basal only dosing strategy */
 "Loop will set temporary basal rates to increase and decrease insulin delivery." = "Loop kommer att ställa in tillfälliga basalnivåer för att öka eller minska insulintillförsel.";
 
+/* Information about maximum basal rate (1: app name) */
+"Maximum Basal Rate is the maximum automatically adjusted basal rate that %1$@ is allowed to enact to help reach your correction range." = "Maximal basaldos är den högsta automatiskt justerade basal som %1$@ har lov att genomföra för att hjälpa till att nå ditt målvärde.";
+
 /* Details for configuration error when maximum bolus is missing */
 "Maximum Bolus" = "Maximal bolus";
+
+/* Information about maximum bolus (1: app name) */
+"Maximum Bolus is the highest bolus amount that you will allow %1$@ to recommend at one time to cover carbs or bring down high glucose." = "Maximal bolus är den högsta bolusmängd som du tillåter %1$@ att rekommendera vid ett tillfälle för att täcka kolhydrater eller sänka högt glukosvärde.";
 
 /* Title for bolus entry screen when also entering carbs */
 "Meal Bolus" = "Måltidsbolus";
@@ -728,6 +750,9 @@
 /* The title text in settings */
 "Suspend Threshold" = "Tröskelvärde";
 
+/* Title of the prediction input effect for suspension of insulin delivery */
+"Suspension of Insulin Delivery" = "Paus av insulintillförsel";
+
 /* Descriptive text for button to add CGM device */
 "Tap here to set up a CGM" = "Tryck här för att ställa in en CGM";
 
@@ -763,6 +788,9 @@
 
 /* Title text for button to Therapy Settings */
 "Therapy Settings" = "Behandlingsinställningar";
+
+/* Information about maximum automated insulin on board (1: app name) */
+"This setting will also determine a safety limit for automatic dosing. %1$@ will limit automatic delivery to keep the amount of active insulin below twice your maximum bolus." = "Denna inställning kommer också att bestämma en säkerhetsgräns för automatisk dosering. %1$@ kommer att begränsa automatisk insulintillförseln för att hålla mängden aktivt insulin under den dubbla mängden av din maximala bolus.";
 
 /* Title of the carb entry date picker cell */
 "Time" = "Tid";
