@@ -132,14 +132,21 @@
 
 /* Alert Permissions button text
    Title of alert management screen */
-"Alert Management" = "Hantera Varningar";
+"Alert Management" = "Hantera varningar";
 
 /* Alert Permissions button text
    Notification & Critical Alert Permissions screen title */
-"Alert Permissions" = "Behörigheter för Varningar";
+"Alert Permissions" = "Behörigheter för varningar";
 
 /* Alert Permissions button descriptive text */
-"Alert Permissions and Mute Alerts" = "Behörigheter för Varningar och tysta Varningar";
+"Alert Permissions and Mute Alerts" = "Behörigheter för varningar och tysta varningar";
+
+/* Navigation title for algorithms experiments screen
+   The title of the Algorithm Experiments section in settings */
+"Algorithm Experiments" = "Algoritmexperiment";
+
+/* Algorithm Experiments description. */
+"Algorithm Experiments are optional modifications to the Loop Algorithm. These modifications are less tested than the standard Loop Algorithm, so please use carefully." = "Algoritmexperiment är valfria modifieringar av Loop-algoritmen. Dessa modifieringar är mindre testade än den standardiserade Loop-algoritmen, så använd dem med försiktighet.";
 
 /* The title of the section containing algorithm settings */
 "Algorithm Settings" = "Algoritminställningar";
@@ -255,6 +262,9 @@
 /* Description of the prediction input effect for carbohydrates. (1: The glucose unit string) */
 "Carbs Absorbed (g) ÷ Carb Ratio (g/U) × Insulin Sensitivity (%1$@/U)" = "Absorberade kolhydrater (g) ÷ Insulinkvot (g/E) × Insulinkänslighet (%1$@/E)";
 
+/* Caution warning in the Algorithm Experiments screen. */
+"Caution" = "Varning";
+
 /* The notification alert describing a low pump battery */
 "Change the pump battery immediately" = "Byt pumpbatteri nu";
 
@@ -310,6 +320,9 @@
 /* The title of the glucose target range schedule screen
    The title text for the glucose target range schedule */
 "Correction Range" = "Målvärde";
+
+/* Critical Alerts Status text */
+"Critical Alerts" = "Kritiska varningar";
 
 /* Critical event log ready text */
 "Critical Event Log Ready" = "Kritisk händelselogg klar";
@@ -379,7 +392,7 @@
 "Dismiss" = "Avfärda";
 
 /* No comment provided by engineer. */
-"Done" = "Färdig";
+"Done" = "Klar";
 
 /* Title for card to log dose */
 "Dose Summary" = "Sammanfattning av dos";
@@ -392,6 +405,12 @@
 
 /* The action hint of the workout mode toggle button when disabled */
 "Enables" = "Slår på";
+
+/* Title for Glucose Based Partial Application toggle */
+"Enable Glucose Based Partial Application" = "Aktivera glukosbaserad partiell tillämpning";
+
+/* Title for Integral Retrospective Correction toggle */
+"Enable Integral Retrospective Correction" = "Aktivera integrerad restrospektiv korrigering";
 
 /* Caption for bolus screen notice when glucose data is missing or stale */
 "Enter a blood glucose from a meter for a recommended bolus amount." = "Du behöver mata in ett blodsockervärde för att få en rekommenderad bolus.";
@@ -453,11 +472,18 @@
 /* The short unit display string for grams */
 "g" = "g";
 
+/* Get help with Alert Permissions support button text */
+"Get help with Alert Permissions" = "Få hjälp med behörigheter för varningar";
+
 /* Support button for Therapy Settings */
 "Get help with Therapy Settings" = "Få hjälp med behandlingsinställningar";
 
 /* The title of the glucose and prediction graph */
 "Glucose" = "Glukos";
+
+/* Title for glucose based partial application experiment description
+   Title of glucose based partial application experiment */
+"Glucose Based Partial Application" = "Glukosbaserad partiell tillämpning";
 
 /* The error message when glucose data is too old to be used. (1: glucose data age in minutes) */
 "Glucose data is %1$@ old" = "Glukosvärde är %1$@ gammalt";
@@ -477,6 +503,9 @@
 
 /* Title of the prediction input effect for glucose momentum */
 "Glucose Momentum" = "Glukosförändring";
+
+/* Immediate Delivery status text */
+"Immediate" = "Omedelbart";
 
 /* The title of a target alert action specifying an indefinitely long workout targets duration */
 "Indefinitely" = "Oändligt";
@@ -510,11 +539,21 @@
 /* Insulin type label */
 "Insulin Type" = "Insulintyp";
 
+/* Title for integral retrospective correction experiment description
+   Title of integral retrospective correction experiment */
+"Integral Retrospective Correction" = "Integrerad retrospektiv korrigering";
+
+/* Description of Integral Retrospective Correction toggle. */
+"Integral Retrospective Correction (IRC) is an extension of the standard Retrospective Correction (RC) algorithm component in Loop, which adjusts the forecast based on the history of discrepancies between predicted and actual glucose levels.\n\nIn contrast to RC, which looks at discrepancies over the last 30 minutes, with IRC, the history of discrepancies adds up over time. So continued positive discrepancies over time will result in increased dosing. If the discrepancies are negative over time, Loop will reduce dosing further." = "Integrerad retrospektiv korrigering (IRC) är en utvidgning av den vanliga retrospektiv korrigering (RC) algoritmkomponenten i Loop, som justerar prognosen baserat på historiken av avvikelser mellan förutsagda och faktiska glukosnivåer.\n\nTill skillnad från RC, som tittar på avvikelser under de senaste 30 minuterna, summerar IRC avvikelsernas historik över tid. Så fortsatta positiva avvikelser över tid kommer att resultera i ökad dosering. Om avvikelserna är negativa över tid, kommer Loop att minska doseringen ytterligare.";
+
 /* Description of an interrupted bolus dose entry (1: title for dose type, 2: value (? if no value) in bold, 3: programmed value (? if no value), 4: unit) */
 "Interrupted %1$@: <b>%2$@</b> of %3$@ %4$@" = "Avbruten %1$@: <b>%2$@</b> av %3$@ %4$@";
 
 /* The error message when invalid data was encountered. (1: details of invalid data) */
 "Invalid data: %1$@" = "Ogiltigt värde: %1$@";
+
+/* Algorithm Experiments description second paragraph. */
+"In future versions of Loop these experiments may change, end up as standard parts of the Loop Algorithm, or be removed from Loop entirely. Please follow along in the Loop Zulip chat to stay informed of possible changes to these features." = "I framtida versioner av Loop kan dessa experiment förändras, bli standarddelar av Loop-algoritmen, eller tas bort från Loop helt och hållet. Följ gärna med i Loop Zulip-chatten för att hålla dig informerad om eventuella förändringar av dessa funktioner.";
 
 /* The title text for the issue report cell */
 "Issue Report" = "Skapa felrapport";
@@ -547,26 +586,29 @@
 /* The notification alert describing a long-lasting loop failure. The substitution parameter is the time interval since the last loop */
 "Loop has not completed successfully in %@" = "Loop har inte lyckats köra på %@";
 
+/* Description of Glucose Based Partial Application toggle. */
+"Loop normally gives 40% of your predicted insulin needs each dosing cycle.\n\nWhen the Glucose Based Partial Application experiment is enabled, Loop will vary the percentage of recommended bolus delivered each cycle with glucose level.\n\nNear correction range, it will use 20% (similar to Temp Basal), and gradually increase to a maximum of 80% at high glucose (200 mg/dL, 11.1 mmol/L).\n\nPlease be aware that during fast rising glucose, such as after an unannounced meal, this feature, combined with velocity and retrospective correction effects, may result in a larger dose than your ISF would call for." = "Loop ger normalt 40 % av ditt förväntade insulinbehov vid varje doseringscykel.\n\nNär glukosbaserad partiell tillämpning är aktiverad, kommer Loop att variera procentandelen av den rekommenderade bolusdosen som ges vid varje cykel beroende på glukosnivån.\n\nNära korrigeringsintervallet kommer den att använda 20 % (liknande en temporär basal), och gradvis öka till maximalt 80 % vid höga glukosnivåer (200 mg/dL, 11,1 mmol/L).\n\nVar medveten om att vid snabbt stigande glukosnivåer, såsom efter en oregistrerad måltid, kan denna funktion, i kombination med hastighets- och retrospektiva korrigeringar, resultera i en större dos än vad din ISF skulle ange.";
+
 /* Description string for automatic bolus dosing strategy */
 "Loop will automatically bolus when insulin needs are above scheduled basal, and will use temporary basal rates when needed to reduce insulin delivery below scheduled basal." = "Loop kommer att ge bolus automatiskt när insulinbehovet är större än ordinarie basal och kommer, vid behov, att minska din ordinarie basal med temporära basaldoser för att minska insulintillförseln.";
 
 /* Description string for temp basal only dosing strategy */
 "Loop will set temporary basal rates to increase and decrease insulin delivery." = "Loop kommer att ställa in tillfälliga basalnivåer för att öka eller minska insulintillförsel.";
 
-/* Information about maximum basal rate (1: app name) */
-"Maximum Basal Rate is the maximum automatically adjusted basal rate that %1$@ is allowed to enact to help reach your correction range." = "Maximal basaldos är den högsta automatiskt justerade basal som %1$@ har lov att genomföra för att hjälpa till att nå ditt målvärde.";
+/* Manage Permissions in Settings button text */
+"Manage Permissions in Settings" = "Hantera behörigheter i inställningar";
 
 /* Details for configuration error when maximum bolus is missing */
 "Maximum Bolus" = "Maximal bolus";
-
-/* Information about maximum bolus (1: app name) */
-"Maximum Bolus is the highest bolus amount that you will allow %1$@ to recommend at one time to cover carbs or bring down high glucose." = "Maximal bolus är den högsta bolusmängd som du tillåter %1$@ att rekommendera vid ett tillfälle för att täcka kolhydrater eller sänka högt glukosvärde.";
 
 /* Title for bolus entry screen when also entering carbs */
 "Meal Bolus" = "Måltidsbolus";
 
 /* The short unit display string for milligrams of glucose per decilter */
 "mg/dL" = "mg/dl";
+
+/* Title for missed meal notifications toggle */
+"Missed Meal Notifications" = "Varningar om glömd måltid";
 
 /* The error message for missing data. (1: missing data details) */
 "Missing data: %1$@" = "Saknar data: %1$@";
@@ -609,6 +651,18 @@
 
 /* Title for bolus screen notice when pump data is missing or stale */
 "No Recent Pump Data" = "Det finns inga aktuella pumpdata";
+
+/* Notifications Status text */
+"Notifications" = "Notiser";
+
+/* Notification Delivery Status text */
+"Notification Delivery" = "Leverans av notiser";
+
+/* Alert Permissions descriptive text (1: app name) */
+"Notifications give you important %1$@ app information without requiring you to open the app." = "Notiser ger dig viktig information om %1$@-appen utan att du behöver öppna appen.";
+
+/* Alert Permissions descriptive text (1: app name) */
+"Notifications give you important %1$@ app information without requiring you to open the app.\n\nKeep these turned ON in your phone’s settings to ensure you receive %1$@ Notifications, Critical Alerts, and Time Sensitive Notifications." = "Notiser ger dig viktig information om %1$@-appen utan att du behöver öppna appen.\n\nHåll dessa aktiverade i telefonens inställningar för att säkerställa att du får %1$@-notiser, kritiska varningar och tidskänsliga notiser.";
 
 /* Notification Setting Status is Off */
 "Off" = "Av";
@@ -716,6 +770,9 @@
 /* Button text to save carbs and/or manual glucose entry without a bolus */
 "Save without Bolusing" = "Spara utan att ge bolus";
 
+/* Scheduled Delivery status text */
+"Scheduled" = "Schemalagd";
+
 /* The title of the services section in settings */
 "Services" = "Tjänster";
 
@@ -771,6 +828,9 @@
 /* Message presented in the status row instructing the user to tap this row to stop a bolus */
 "Tap to Stop" = "Tryck för att stoppa";
 
+/* Settings TestFlight expiration view */
+"TestFlight Expiration" = "TestFlight går ut";
+
 /* Alert message for an updated bolus recommendation */
 "The bolus recommendation has updated. Please reconfirm the bolus amount." = "Bolusrekommendationen har uppdaterats. Konfirmera bolus";
 
@@ -789,11 +849,11 @@
 /* Title text for button to Therapy Settings */
 "Therapy Settings" = "Behandlingsinställningar";
 
-/* Information about maximum automated insulin on board (1: app name) */
-"This setting will also determine a safety limit for automatic dosing. %1$@ will limit automatic delivery to keep the amount of active insulin below twice your maximum bolus." = "Denna inställning kommer också att bestämma en säkerhetsgräns för automatisk dosering. %1$@ kommer att begränsa automatisk insulintillförseln för att hålla mängden aktivt insulin under den dubbla mängden av din maximala bolus.";
-
 /* Title of the carb entry date picker cell */
 "Time" = "Tid";
+
+/* Time Sensitive Status text */
+"Time Sensitive Notifications" = "Tidskänsliga notiser";
 
 /* Critical event log export error alert try again button */
 "Try Again" = "Försök igen";
@@ -848,6 +908,9 @@
 
 /* Explanation of suspend threshold */
 "When current or forecasted glucose is below the suspend threshold, Loop will not recommend a bolus, and will always recommend a temporary basal rate of 0 units per hour." = "När nuvarande eller förväntat slutglukosvärde är under tröskelvärdet kommer Loop inte att rekommendera en bolus, utan kommer alltid att föreslå en temporär basal på 0 enheter per timme.";
+
+/* Description of missed meal notifications. */
+"When enabled, Loop can notify you when it detects a meal that wasn't logged." = "När aktiverad kan Loop meddela dig när den detekterar en måltid som inte har registrerats.";
 
 /* No comment provided by engineer. */
 "When out of Closed Loop mode, the app uses a simplified bolus calculator like a typical pump." = "När läget sluten Loop inte används, kommer appen använda en förenklad bolusdoskalkylator likt den en vanlig pump använder.";
