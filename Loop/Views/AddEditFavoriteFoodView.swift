@@ -44,7 +44,7 @@ struct AddEditFavoriteFoodView: View {
                             saveButton
                         }
                     }
-                    .navigationBarTitle("New Favorite Food", displayMode: .inline)
+                    .navigationBarTitle(NSLocalizedString("New Favorite Food", comment: "Title of new favorite food screen"), displayMode: .inline)
                     .onAppear {
                         expandedRow = .name
                     }

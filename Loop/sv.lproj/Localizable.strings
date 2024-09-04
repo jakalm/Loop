@@ -172,6 +172,9 @@
 /* The title of the nightscout API secret credential */
 "API Secret" = "API Secret";
 
+/* Default name on add favorite food screen */
+"Apple" = "Äpple";
+
 /* Action sheet confirmation message for pump history deletion */
 "Are you sure you want to delete all history entries?" = "Säkert att du vill radera all händelsehistorik?";
 
@@ -261,6 +264,9 @@
 
 /* Description of the prediction input effect for carbohydrates. (1: The glucose unit string) */
 "Carbs Absorbed (g) ÷ Carb Ratio (g/U) × Insulin Sensitivity (%1$@/U)" = "Absorberade kolhydrater (g) ÷ Insulinkvot (g/E) × Insulinkänslighet (%1$@/E)";
+
+/* Label for carb quantity row on add favorite food screen */
+"Carb Quantity" = "Mängd";
 
 /* Caution warning in the Algorithm Experiments screen. */
 "Caution" = "Varning";
@@ -623,8 +629,14 @@
    Text for more info action on notification of upcoming TestFlight expiration */
 "More Info" = "Mer info";
 
+/* Label for name row on add favorite food screen */
+"Name" = "Namn";
+
 /* Sensor state description for the non-valid state */
 "Needs Attention" = "Kräver uppmärksamhet";
+
+/* Title of new favorite food screen */
+"New Favorite Food" = "Ny favoritmat";
 
 /* The title of the Nightscout service */
 "Nightscout" = "Nightscout";

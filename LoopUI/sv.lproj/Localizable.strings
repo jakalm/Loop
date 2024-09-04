@@ -1,3 +1,9 @@
+/* Green closed loop ON message (1: last loop string) (2: app name) */
+"\n%1$@\n\n%2$@ is operating with Closed Loop in the ON position." = "\n%1$@\n\n%2$@ är i drift med sluten loop i PÅ-läge.";
+
+/* Green closed loop OFF message (1: app name)(2: reason for open loop) */
+"\n%1$@ is operating with Closed Loop in the OFF position. Your pump and CGM will continue operating, but the app will not adjust dosing automatically.\n\n%2$@" = "\n%1$@ är i drift med sluten loop i AV-läge. Din pump och CGM kommer att fortsätta fungera, men appen kommer inte att justera doseringen automatiskt.\n\n%2$@";
+
 /* No glucose value representation (3 dashes for mg/dL) */
 "– – –" = "– – –";
 
@@ -6,6 +12,9 @@
 
 /* The format string describing the basal rate. */
 "%@ U" = "%@ E";
+
+/* Format string describing last completion. (1: time ago */
+"%1$@ ago" = "%1$@ sedan";
 
 /* Accessbility format value describing glucose: (1: glucose number)(2: glucose time) */
 "%1$@ at %2$@" = "%1$@ at %2$@";
@@ -37,6 +46,9 @@
 /* String displayed instead of a glucose value above the CGM range */
 "HIGH" = "HÖGT";
 
+/* Last loop time completed message (1: last loop time string) */
+"Last completed loop %1$@." = "Senaste avslutade loop %1$@.";
+
 /* Title of red loop message */
 "Loop Failure" = "Loopfel";
 
@@ -60,6 +72,9 @@
 
 /* Format string for combining localized numeric value and unit. (1: numeric value)(2: unit) */
 "QUANTITY_VALUE_AND_UNIT" = "%1$@ %2$@";
+
+/* Instructions for user to close loop if it is allowed. */
+"Tap Settings to toggle Closed Loop ON if you wish for the app to automate your insulin." = "Gå in i inställningar och slå på sluten loop om du vill att appen ska automatisera din insulindosering.";
 
 /* The short unit display string for international units of insulin */
 "U" = "E";
