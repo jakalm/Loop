@@ -550,7 +550,7 @@
 "Glucose Momentum" = "Glukosförändring";
 
 /* Details for configuration error when glucose target range schedule is missing */
-"Glucose Target Range Schedule" = "Målintervallsschema för blodsocker"";
+"Glucose Target Range Schedule" = "Målintervallsschema för blodsocker";
 
 /* No comment provided by engineer. */
 "HARDWARE SOUNDS" = "HÅRDVARULJUD";
