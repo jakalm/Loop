@@ -1,27 +1,6 @@
 /* No comment provided by engineer. */
 "" = "";
 
-/* No comment provided by engineer. */
-"\(date, formatter: Self.dateFormatter)" = "\(date, formatter: Self.dateFormatter)";
-
-/* No comment provided by engineer. */
-"\(glucoseString)" = "\(glucoseString)";
-
-/* No comment provided by engineer. */
-"\(rateString) U" = "\(rateString) U";
-
-/* Green closed loop ON message (1: last loop string) (2: app name) */
-"\n%1$@\n\n%2$@ is operating with Closed Loop in the ON position." = "\n%1$@\n\n%2$@ is operating with Closed Loop in the ON position.";
-
-/* Red loop message (1: last loop  string) (2: app name) */
-"\n%1$@\n\nTap your CGM and insulin pump status icons for more information. %2$@ will continue trying to complete a loop, but check for potential communication issues with your pump and CGM." = "\n%1$@\n\nTap your CGM and insulin pump status icons for more information. %2$@ will continue trying to complete a loop, but check for potential communication issues with your pump and CGM.";
-
-/* Yellow loop message (1: last loop string) (2: app name) */
-"\n%1$@\n\nTap your CGM and insulin pump status icons for more information. %2$@ will continue trying to complete a loop, but watch for potential communication issues with your pump and CGM." = "\n%1$@\n\nTap your CGM and insulin pump status icons for more information. %2$@ will continue trying to complete a loop, but watch for potential communication issues with your pump and CGM.";
-
-/* Green closed loop OFF message (1: app name)(2: reason for open loop) */
-"\n%1$@ is operating with Closed Loop in the OFF position. Your pump and CGM will continue operating, but the app will not adjust dosing automatically.\n\n%2$@" = "\n%1$@ is operating with Closed Loop in the OFF position. Your pump and CGM will continue operating, but the app will not adjust dosing automatically.\n\n%2$@";
-
 /* Status row title for premeal override enabled (leading space is to separate from symbol) */
 " Pre-meal Preset" = " Preprandiellt förval";
 
@@ -33,12 +12,6 @@
 
 /* Status row title for workout override enabled (leading space is to separate from symbol) */
 " Workout Preset" = " Träningsförval";
-
-/* No glucose value representation (3 dashes for mg/dL; no spaces as this will get truncated in the watch complication) */
-"---" = "---";
-
-/* No comment provided by engineer. */
-"-U" = "-U";
 
 /* String denoting lack of a recommended bolus amount in the simple bolus calculator */
 "–" = "–";
@@ -52,29 +25,14 @@
 /* Full stop character */
 "." = ".";
 
-/* Displayed in the widget when the amount of active carbs cannot be determined. */
-"? g" = "? g";
-
-/* Displayed in the widget when the amount of active insulin cannot be determined. */
-"? U" = "? U";
-
-/* No comment provided by engineer. */
-"??" = "??";
-
 /* The format for an active custom preset. (1: preset symbol)(2: preset name) */
 "%@ %@" = "%1$@ %2$@";
 
 /* Formats absorbed carb value */
 "%@ absorbed" = "%@ absorberat";
 
-/* Format string describing the time interval since the last completion date. (1: The localized date components */
-"%@ ago" = "%@ ago";
-
 /* Estimated remaining duration with more than a minute */
 "%@ remaining" = "%@ återstår";
-
-/* The format string describing the basal rate. */
-"%@ U" = "%@ U";
 
 /* The subtitle format describing total insulin. (1: localized insulin total) */
 "%@ U Total" = "%@ E totalt";
@@ -85,12 +43,6 @@
 /* Adds a full-stop to a statement (1: statement, 2: full stop character) */
 "%1@%2@" = "%1@%2@";
 
-/* The subtitle format describing the grams of active carbs.  (1: localized carb value description) */
-"%1$@" = "%1$@";
-
-/* Format string for glucose range (1: lower bound)(2: upper bound)(3: unit) */
-"%1$@ – %2$@ %3$@" = "%1$@ – %2$@ %3$@";
-
 /* Format string combining carb entry quantity and absorption time emoji */
 "%1$@ %2$@" = "%1$@ %2$@";
 
@@ -98,17 +50,8 @@
    Formats (1: carb start time) and (2: carb absorption duration) */
 "%1$@ + %2$@" = "%1$@ + %2$@";
 
-/* Format string describing last completion. (1: time ago */
-"%1$@ ago" = "%1$@ ago";
-
-/* Format string describing last completion. (1: time ago, (2: the date */
-"%1$@ ago at %2$@" = "%1$@ ago at %2$@";
-
 /* App sounds title text (1: app name) */
 "%1$@ APP SOUNDS" = "%1$@ APP SOUNDS";
-
-/* Accessbility format value describing glucose: (1: glucose number)(2: glucose time) */
-"%1$@ at %2$@" = "%1$@ at %2$@";
 
 /* Alert message for closed loop off informational modal. (1: app name) */
 "%1$@ is operating with Closed Loop in the OFF position. Your pump and CGM will continue operating, but the app will not adjust dosing automatically." = "%1$@ is operating with Closed Loop in the OFF position. Your pump and CGM will continue operating, but the app will not adjust dosing automatically.";
@@ -122,15 +65,8 @@
 /* Time change alert title */
 "%1$@ Time Settings Need Attention" = "%1$@ Time Settings Need Attention";
 
-/* Reservoir entry (1: volume value)
-   The subtitle format describing units of active insulin. (1: localized insulin value description) */
+/* Reservoir entry (1: volume value) */
 "%1$@ U" = "%1$@ E";
-
-/* Accessibility format string describing the basal rate. (1: localized basal rate value)(2: last updated time) */
-"%1$@ units per hour at %2$@" = "%1$@ units per hour at %2$@";
-
-/* The format string for the app name and version number. (1: bundle name)(2: bundle version) */
-"%1$@ v%2$@" = "%1$@ v%2$@";
 
 /* Format string for body for notification of upcoming expiration. (1: app name) (2: amount of time until expiration */
 "%1$@ will stop working in %2$@. You will need to rebuild before that." = "%1$@ will stop working in %2$@. You will need to rebuild before that.";
@@ -144,9 +80,6 @@
 /* Description of a basal temp basal dose entry (1: title for dose type, 2: value (? if no value) in bold, 3: unit)
    Description of a bolus dose entry (1: title for dose type, 2: value (? if no value) in bold, 3: unit) */
 "%1$@: <b>%2$@</b> %3$@" = "%1$@: <b>%2$@</b> %3$@";
-
-/* Format string describing last completion */
-"<1 min ago" = "<1 min ago";
 
 /* No comment provided by engineer. */
 "⚠️" = "⚠️";
@@ -182,23 +115,16 @@
 /* The title of the Carbs On-Board graph */
 "Active Carbohydrates" = "Aktiva kolhydrater";
 
-/* HUD row title for COB
-   Title describing quantity of still-absorbing carbohydrates
-   Widget label title describing the active carbs */
+/* Title describing quantity of still-absorbing carbohydrates */
 "Active Carbs" = "Aktiva kolhydrater";
 
 /* Details for missing data error when active insulin amount is missing
-   HUD row title for IOB
    The title of the Insulin On-Board graph
-   Title describing quantity of still-absorbing insulin
-   Widget label title describing the active insulin */
+   Title describing quantity of still-absorbing insulin */
 "Active Insulin" = "Aktivt insulin";
 
 /* No comment provided by engineer. */
 "Add a new favorite food" = "Add a new favorite food";
-
-/* Title of the user activity for adding carbs */
-"Add Carb Entry" = "Lägg till kolhydrater";
 
 /* Action sheet title selecting CGM
    The title of the CGM chooser in settings
@@ -301,9 +227,6 @@
 /* The message displayed during a device authentication prompt to log an insulin dose */
 "Authenticate to log %@ Units" = "Godkänn att logga %@ enheter";
 
-/* Title string for automatic bolus dosing strategy */
-"Automatic Bolus" = "Automatic Bolus";
-
 /* Details for configuration error when basal rate schedule is missing */
 "Basal Rate Schedule" = "Basaldosschema";
 
@@ -322,21 +245,16 @@
 /* Bluetooth unavailable alert title */
 "Bluetooth Unavailable Alert" = "Varning Bluetooth är inte tillgänglig";
 
-/* Button text to confirm manual bolus on Apple Watch
-   Label for bolus entry row on bolus screen
+/* Label for bolus entry row on bolus screen
    Label for bolus entry row on simple bolus screen
    The label of the bolus entry button
    Title for bolus entry screen */
 "Bolus" = "Bolus";
 
-/* The title of the alert controller displayed after a bolus attempt fails */
-"Bolus Failed" = "Bolus Failed";
-
 /* The notification title for a bolus issue */
 "Bolus Issue" = "Bolus Issue";
 
-/* Alert title for an updated bolus recommendation
-   Alert title for updated bolus recommendation on Apple Watch */
+/* Alert title for an updated bolus recommendation */
 "Bolus Recommendation Updated" = "Det finns en ny bolusrekommendation";
 
 /* Title for card displaying carb entry and bolus recommendation */
@@ -404,18 +322,11 @@
    The button label of the action used to dismiss the unsafe notification permission alert */
 "Close" = "Stäng";
 
-/* Accessibility hint describing completion HUD for a closed loop */
-"Closed loop" = "Closed loop";
-
 /* The title text for the looping enabled switch cell */
 "Closed Loop" = "Sluten loop";
 
-/* Alert title for closed loop off informational modal
-   Title of green open loop OFF message */
+/* Alert title for closed loop off informational modal */
 "Closed Loop OFF" = "Sluten Loop är AV";
-
-/* Title of green closed loop ON message */
-"Closed Loop ON" = "Closed Loop ON";
 
 /* The description text for the looping enabled switch cell when closed loop is not allowed because the sensor is inactive */
 "Closed Loop requires an active CGM Sensor Session" = "Sluten Loop kräver en aktiv CGM-sensor";
@@ -435,18 +346,13 @@
 /* Title text for button to complete setup */
 "Complete Setup" = "Complete Setup";
 
-/* Lesson subtitle */
-"Computes the percentage of glucose measurements within a specified range" = "Computes the percentage of glucose measurements within a specified range";
-
 /* The title of the Configuration section in settings */
 "Configuration" = "Konfiguration";
 
 /* The error message displayed for configuration errors. (1: configuration error details) */
 "Configuration Error: %1$@" = "Konfigurationsfel %1$@";
 
-/* Button text to continue from carb entry to bolus entry on Apple Watch
-   Default alert dismissal
-   Title of the button to begin lesson execution */
+/* Default alert dismissal */
 "Continue" = "Fortsätt";
 
 /* Descriptive text for Continuous Glucose Monitor */
@@ -478,9 +384,6 @@
 
 /* Date picker label */
 "Date" = "Tid";
-
-/* The short unit display string for decibles */
-"dB" = "dB";
 
 /* No comment provided by engineer. */
 "Delete" = "Ta bort";
@@ -519,7 +422,6 @@
 "Disables" = "Stänger av";
 
 /* Default alert dismissal
-   The action button title to dismiss an error message
    The button label of the action used to dismiss an error alert */
 "Dismiss" = "Avfärda";
 
@@ -567,9 +469,6 @@
 
 /* Segmented button title for insulin delivery log event history */
 "Event History" = "Händelsehistorik";
-
-/* No comment provided by engineer. */
-"Eventual" = "Eventual";
 
 /* The subtitle format describing eventual glucose. (1: localized glucose value description) */
 "Eventually %@" = "Förväntat %@";
@@ -620,10 +519,6 @@
 /* Label for link to see frequently asked questions */
 "Frequently asked questions about alerts" = "Frequently asked questions about alerts";
 
-/* Short unit label for gram measurement
-   The short unit display string for grams */
-"g" = "g";
-
 /* Get help with Alert Permissions support button text */
 "Get help with Alert Permissions" = "Få hjälp med behörigheter för varningar";
 
@@ -659,9 +554,6 @@
 
 /* No comment provided by engineer. */
 "HARDWARE SOUNDS" = "HARDWARE SOUNDS";
-
-/* String displayed instead of a glucose value above the CGM range */
-"HIGH" = "HIGH";
 
 /* No comment provided by engineer. */
 "High Glucose" = "High Glucose";
@@ -756,9 +648,6 @@
 /* Title of the warning shown when a large meal was entered */
 "Large Meal Entered" = "Large Meal Entered";
 
-/* Last loop time completed message (1: last loop time string) */
-"Last completed loop %1$@." = "Last completed loop %1$@.";
-
 /* OK button title for alert shown when delivery status is uncertain */
 "Learn More" = "Lär dig mer";
 
@@ -778,8 +667,7 @@
 /* Title for crash recovery alert */
 "Loop Crashed" = "Loop Crashed";
 
-/* The notification title for a loop failure
-   Title of red loop message */
+/* The notification title for a loop failure */
 "Loop Failure" = "Loopfel";
 
 /* Bluetooth unavailable alert body. */
@@ -794,12 +682,6 @@
 /* Description of Glucose Based Partial Application toggle. */
 "Loop normally gives 40% of your predicted insulin needs each dosing cycle.\n\nWhen the Glucose Based Partial Application experiment is enabled, Loop will vary the percentage of recommended bolus delivered each cycle with glucose level.\n\nNear correction range, it will use 20% (similar to Temp Basal), and gradually increase to a maximum of 80% at high glucose (200 mg/dL, 11.1 mmol/L).\n\nPlease be aware that during fast rising glucose, such as after an unannounced meal, this feature, combined with velocity and retrospective correction effects, may result in a larger dose than your ISF would call for." = "Loop ger normalt 40 % av ditt förväntade insulinbehov vid varje doseringscykel.\n\nNär glukosbaserad partiell tillämpning är aktiverad, kommer Loop att variera procentandelen av den rekommenderade bolusdosen som ges vid varje cykel beroende på glukosnivån.\n\nNära korrigeringsintervallet kommer den att använda 20 % (liknande en temporär basal), och gradvis öka till maximalt 80 % vid höga glukosnivåer (200 mg/dL, 11,1 mmol/L).\n\nVar medveten om att vid snabbt stigande glukosnivåer, såsom efter en oregistrerad måltid, kan denna funktion, i kombination med hastighets- och retrospektiva korrigeringar, resultera i en större dos än vad din ISF skulle ange.";
 
-/* Accessbility format label describing the time interval since the last completion date. (1: The localized date components) */
-"Loop ran %@ ago" = "Loop ran %@ ago";
-
-/* Title of yellow loop message */
-"Loop Warning" = "Loop Warning";
-
 /* Description string for automatic bolus dosing strategy */
 "Loop will automatically bolus when insulin needs are above scheduled basal, and will use temporary basal rates when needed to reduce insulin delivery below scheduled basal." = "Loop kommer att ge bolus automatiskt när insulinbehovet är större än ordinarie basal och kommer, vid behov, att minska din ordinarie basal med temporära basaldoser för att minska insulintillförseln.";
 
@@ -809,19 +691,9 @@
 /* Description string for temp basal only dosing strategy */
 "Loop will set temporary basal rates to increase and decrease insulin delivery." = "Loop kommer att ställa in tillfälliga basalnivåer för att öka eller minska insulintillförsel.";
 
-/* String displayed instead of a glucose value below the CGM range */
-"LOW" = "LOW";
-
 /* Title for bolus screen warning when glucose is below glucose warning limit.
    Title for bolus screen warning when glucose is below suspend threshold, but a bolus is recommended */
 "Low Glucose" = "Low Glucose";
-
-/* The recovery message displayed after a glucose range override send attempt fails */
-"Make sure your iPhone is nearby and try again" = "Make sure your iPhone is nearby and try again";
-
-/* The recovery message displayed after a bolus attempt fails
-   The recovery message displayed after a potential carb entry send attempt fails */
-"Make sure your iPhone is nearby and try again." = "Make sure your iPhone is nearby and try again.";
 
 /* Manage Permissions in Settings button text */
 "Manage Permissions in Settings" = "Hantera behörigheter i inställningar";
@@ -831,9 +703,6 @@
 
 /* Description of a bolus dose entry (1: value (? if no value) in bold, 2: unit) */
 "Manual Dose: <b>%1$@</b> %2$@" = "Manual Dose: <b>%1$@</b> %2$@";
-
-/* Placeholder for upper range entry */
-"Maximum" = "Maximum";
 
 /* Details for configuration error when maximum basal rate per hour is missing */
 "Maximum Basal Rate Per Hour" = "Maximum Basal Rate Per Hour";
@@ -847,12 +716,6 @@
 /* Title for bolus entry screen when also entering carbs */
 "Meal Bolus" = "Måltidsbolus";
 
-/* The short unit display string for milligrams of glucose per decilter */
-"mg/dL" = "mg/dl";
-
-/* Placeholder for lower range entry */
-"Minimum" = "Minimum";
-
 /* Title for missed meal notifications toggle */
 "Missed Meal Notifications" = "Varningar om glömd måltid";
 
@@ -861,12 +724,6 @@
 
 /* Bolus error description: missing maximum bolus in settings. */
 "Missing maximum allowed bolus in settings" = "Missing maximum allowed bolus in settings";
-
-/* The short unit display string for millimoles of glucose per liter */
-"mmol/L" = "mmol/L";
-
-/* Lesson title */
-"Modal Day" = "Modal Day";
 
 /* Details for missing data error when momentum effects are missing */
 "Momentum effects" = "Momentumeffekter";
@@ -884,14 +741,8 @@
 /* Label for name row on add favorite food screen */
 "Name" = "Namn";
 
-/* Accessibility label component for glucose HUD describing an invalid state */
-"Needs attention" = "Needs attention";
-
 /* Override error description: negative duration error. */
 "Negative duration not allowed" = "Negative duration not allowed";
-
-/* HUD row title for Net Basal Rate */
-"Net Basal Rate" = "Net Basal Rate";
 
 /* Title of new favorite food screen */
 "New Favorite Food" = "Ny favoritmat";
@@ -906,9 +757,6 @@
 
 /* The error message displayed for device connection errors. */
 "No connected devices, or failure during device connection" = "Ingen ansluten enhet, eller fel vid anslutning till enhet";
-
-/* Lesson result text for no data */
-"No data available" = "No data available";
 
 /* Alert title for a missing maximum bolus setting error */
 "No Maximum Bolus Configured" = "Ingen maximal bolus har blivit inställd";
@@ -940,8 +788,7 @@
 /* Alert Permissions descriptive text (1: app name) */
 "Notifications give you important %1$@ app information without requiring you to open the app." = "Notiser ger dig viktig information om %1$@-appen utan att du behöver öppna appen.";
 
-/* Label for off button
-   Notification Setting Status is Off */
+/* Notification Setting Status is Off */
 "Off" = "Av";
 
 /* Modal body for crash recovery alert */
@@ -956,21 +803,11 @@
    The title of the notification action to acknowledge a device alert */
 "OK" = "OK";
 
-/* Label for on button
-   Notification Setting Status is On */
+/* Notification Setting Status is On */
 "On" = "På";
-
-/* Accessbility hint describing completion HUD for an open loop */
-"Open loop" = "Open loop";
-
-/* Alert message for updated bolus recommendation on Apple Watch */
-"Please reconfirm the bolus amount." = "Please reconfirm the bolus amount.";
 
 /* The notification title for a meal that was possibly not logged in Loop. */
 "Possible Missed Meal" = "Possible Missed Meal";
-
-/* Title for sheet to enable/disable pre-meal on watch */
-"Pre-Meal" = "Pre-Meal";
 
 /* The label of the pre-meal mode toggle button */
 "Pre-Meal Targets" = "Målvärden före måltid";
@@ -992,9 +829,6 @@
 
 /* Preparing critical event log text */
 "Preparing Critical Event Logs" = "Förbereder kritiska händelseloggar";
-
-/* The text for the Watch button for enabling a custom preset */
-"Preset" = "Preset";
 
 /* Settings App Profile expiration view */
 "Profile Expiration" = "Profile Expiration";
@@ -1023,18 +857,6 @@
 /* The error message displayed for pumpSuspended errors. */
 "Pump Suspended. Automatic dosing is disabled." = "Pump pausad. Automatisk dosering är inaktiverad.";
 
-/* Format string for combining localized numeric value and unit. (1: numeric value)(2: unit) */
-"QUANTITY_VALUE_AND_UNIT" = "%1$@ %2$@";
-
-/* Section title for glucose range */
-"Range" = "Range";
-
-/* Recommended bolus amount label on Apple Watch */
-"REC: \(valueString) U" = "REC: \(valueString) U";
-
-/* Indicator that recommended bolus computation is in progress on Apple Watch */
-"REC: Calculating..." = "REC: Calculating...";
-
 /* The error message when a recommendation has expired. (1: age of recommendation in minutes) */
 "Recommendation expired: %1$@ old" = "Rekommendationen gick ut för %1$@ sedan";
 
@@ -1058,9 +880,6 @@
 /* No comment provided by engineer. */
 "Reservoir Empty" = "Reservoir Empty";
 
-/* HUD row title for remaining reservoir volume */
-"Reservoir Volume" = "Reservoir Volume";
-
 /* Title of the prediction input effect for retrospective correction */
 "Retrospective Correction" = "Retrospektiv korrigering";
 
@@ -1068,8 +887,7 @@
    The title of the notification action to retry a bolus command */
 "Retry" = "Försök igen";
 
-/* Button text to confirm carb entry without bolusing on Apple Watch
-   Favorite food save button */
+/* Favorite food save button */
 "Save" = "Spara";
 
 /* Button text to save carbs and/or manual glucose entry and deliver a bolus */
@@ -1081,17 +899,11 @@
 /* Button text to save carbs and/or manual glucose entry without a bolus */
 "Save without Bolusing" = "Spara utan att ge bolus";
 
-/* Button text to confirm carb entry and bolus on Apple Watch */
-"Save & Bolus" = "Save & Bolus";
-
 /* Scheduled Delivery status text */
 "Scheduled" = "Schemalagd";
 
 /* No comment provided by engineer. */
 "Selecting a favorite food in the carb entry screen automatically fills in the carb quantity, food type, and absorption time fields! Tap the add button below to create your first favorite food!" = "Selecting a favorite food in the carb entry screen automatically fills in the carb quantity, food type, and absorption time fields! Tap the add button below to create your first favorite food!";
-
-/* The title of the alert controller displayed after a glucose range override send attempt fails */
-"Send Failed" = "Send Failed";
 
 /* No comment provided by engineer. */
 "Sensor Failed" = "Sensor Failed";
@@ -1122,9 +934,6 @@
 /* Software update button link text */
 "Software Update" = "Software Update";
 
-/* Title of config entry */
-"Start Date" = "Start Date";
-
 /* Carb error description: invalid start time is out of range. */
 "Start time is out of range: %@" = "Start time is out of range: %@";
 
@@ -1150,9 +959,6 @@
 /* The descriptive text of the add service button in settings */
 "Tap here to set up a Service" = "Tryck här för att ställa in en tjänst";
 
-/* Instructions for user to close loop if it is allowed. */
-"Tap Settings to toggle Closed Loop ON if you wish for the app to automate your insulin." = "Tap Settings to toggle Closed Loop ON if you wish for the app to automate your insulin.";
-
 /* The subtitle of the cell displaying an action to add a manually measurement glucose value */
 "Tap to Add" = "Tryck för att ange";
 
@@ -1168,9 +974,6 @@
 
 /* The alert body for unmute alert confirmation */
 "Tap Unmute to resume sound for your alerts and alarms." = "Tap Unmute to resume sound for your alerts and alarms.";
-
-/* Title string for temp basal only dosing strategy */
-"Temp Basal Only" = "Temp Basal Only";
 
 /* Settings app TestFlight section */
 "TestFlight" = "TestFlight";
@@ -1214,9 +1017,6 @@
 /* Label for time entry row on carb entry screen */
 "Time" = "Tid";
 
-/* Lesson title */
-"Time in Range" = "Time in Range";
-
 /* No comment provided by engineer. */
 "Time Sensitive Alerts" = "Time Sensitive Alerts";
 
@@ -1229,26 +1029,14 @@
 /* Critical event log export error alert try again button */
 "Try Again" = "Försök igen";
 
-/* Help text for bolus confirmation on Apple Watch */
-"Turn Digital Crown\nto bolus" = "Turn Digital Crown\nto bolus";
-
 /* Description text for temporarily silencing non-critical alerts (1: app name) */
 "Turn off the volume on your iOS device or add %1$@ as an allowed app to each Focus Mode. Time Sensitive and Critical Alerts will still sound, but non-Critical Alerts will be silenced." = "Turn off the volume on your iOS device or add %1$@ as an allowed app to each Focus Mode. Time Sensitive and Critical Alerts will still sound, but non-Critical Alerts will be silenced.";
 
 /* Bluetooth off foreground alert body */
 "Turn on Bluetooth to receive alerts, alarms or sensor glucose readings." = "Aktivera Bluetooth för att ta emot varningar, larm eller blodglukosavläsningar.";
 
-/* The short unit display string for international units of insulin */
-"U" = "E";
-
-/* The short unit display string for international units of insulin delivery per hour */
-"U/hr" = "U/hr";
-
 /* Title for alert shown when alert acknowledgement fails */
 "Unable To Clear Alert" = "Unable To Clear Alert";
-
-/* The title of the alert controller displayed after a potential carb entry send attempt fails */
-"Unable to Reach iPhone" = "Unable to Reach iPhone";
 
 /* Title for alert shown when delivery status is uncertain */
 "Unable To Reach Pump" = "Det går inte att nå pump";
@@ -1262,8 +1050,7 @@
 /* The alert body for an error while canceling a bolus */
 "Unable to stop the bolus in progress. Move your iPhone closer to the pump and try again. Check your insulin delivery history for details, and monitor your glucose closely." = "Det går inte att stoppa pågående bolus. Flytta din iPhone närmare din pump och försök igen. Kontrollera händelsehistorik för insulin för mer detaljerad information och var vaksam på sjunkande blodsocker.";
 
-/* Accessibility value for an unknown value
-   Event title displayed when StoredPumpEvent.title is not set
+/* Event title displayed when StoredPumpEvent.title is not set
    The default description to use when an entry has no dose description
    label for when the alert mute end time is unknown
    result when time cannot be formatted */
@@ -1311,20 +1098,8 @@
 /* The title of the alert controller used to select a duration for workout targets */
 "Use Workout Preset" = "Använd förval 'Träning'";
 
-/* Lesson subtitle */
-"Visualizes the most frequent glucose values by time of day" = "Visualizes the most frequent glucose values by time of day";
-
-/* Accessibility label describing completion HUD waiting for first run */
-"Waiting for first run" = "Waiting for first run";
-
 /* Alert Permissions Need Attention alert title */
 "Warning! Safety notifications are turned OFF" = "Warning! Safety notifications are turned OFF";
-
-/* Format string describing last completion. (1: the date */
-"was at %1$@" = "was at %1$@";
-
-/* Unit string for a count of calendar weeks */
-"Weeks" = "Weeks";
 
 /* No comment provided by engineer. */
 "What are examples of Critical and Time Sensitive alerts?" = "What are examples of Critical and Time Sensitive alerts?";
@@ -1346,10 +1121,6 @@
 
 /* Format string for message of reset loop alert. (1: App name) (2: error description) */
 "While trying to restart %1$@ an error occured.\n\n%2$@" = "While trying to restart %1$@ an error occured.\n\n%2$@";
-
-/* The text for the Watch button for enabling workout mode
-   Title for sheet to enable/disable workout mode on watch */
-"Workout" = "Workout";
 
 /* The label of the workout mode toggle button */
 "Workout Targets" = "Målvärden för träning";
