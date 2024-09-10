@@ -491,11 +491,12 @@
 /* The alert title for a resume error */
 "Failed to Resume Insulin Delivery" = "Misslyckades att återuppta insulintillförsel";
 
+/* Button title for entering Favorite Foods settings
+   Favorite Foods view title */
+"Favorite Foods" = "Favoritmat";
+
 /* No comment provided by engineer. */
 "FAVORITE FOODS" = "FAVORITMAT";
-
-/* Favorite Foods view title */
-"Favorite Foods" = "Favoritmat";
 
 /* Label for manual glucose entry row on bolus screen */
 "Fingerstick Glucose" = "Kapillärt blodsocker";
@@ -933,6 +934,9 @@
 
 /* Title of simple bolus view when displaying meal entry */
 "Simple Meal Calculator" = "Förenklad bolusdoskalkylator";
+
+/* Descriptive text for Favorite Foods setting button */
+"Simplify Carb Entry" = "Förenkla kolhydratinmatning";
 
 /* Format fragment for a start time */
 "since %@" = "sedan %@";
