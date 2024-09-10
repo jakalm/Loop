@@ -765,7 +765,7 @@
 "No Pump Configured" = "Ingen pump konfigurerad";
 
 /* The title of the cell indicating that there is no recent glucose */
-"No Recent Glucose" = "Inga senaste blodglukosvärde";
+"No Recent Glucose" = "Blodsockervärde saknas";
 
 /* Title for bolus screen notice when glucose data is missing or stale */
 "No Recent Glucose Data" = "Inget aktuellt blodsockervärde";
