@@ -494,6 +494,9 @@
 /* No comment provided by engineer. */
 "FAVORITE FOODS" = "FAVORITMAT";
 
+/* Favorite Foods view title */
+"Favorite Foods" = "Favoritmat";
+
 /* Label for manual glucose entry row on bolus screen */
 "Fingerstick Glucose" = "Kapillärt blodsocker";
 
@@ -578,6 +581,9 @@
 
 /* Algorithm Experiments description second paragraph. */
 "In future versions of Loop these experiments may change, end up as standard parts of the Loop Algorithm, or be removed from Loop entirely. Please follow along in the Loop Zulip chat to stay informed of possible changes to these features." = "I framtida versioner av Loop kan dessa experiment förändras, bli standarddelar av Loop-algoritmen, eller tas bort från Loop helt och hållet. Följ gärna med i Loop Zulip-chatten för att hålla dig informerad om eventuella förändringar av dessa funktioner.";
+
+/* No comment provided by engineer. */
+"Information" = "Information";
 
 /* Title of the prediction input effect for insulin */
 "Insulin" = "Insulin";
