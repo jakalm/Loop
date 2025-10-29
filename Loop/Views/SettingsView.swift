@@ -24,6 +24,8 @@ public struct SettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var versionUpdateViewModel: VersionUpdateViewModel
 
+    var basalRateRecommendationsViewModel: BasalRateRecommendationsViewModel?
+
     enum Destination {
         enum Alert: String, Identifiable {
             var id: String {
@@ -60,10 +62,11 @@ public struct SettingsView: View {
     
     var localizedAppNameAndVersion: String
 
-    public init(viewModel: SettingsViewModel, localizedAppNameAndVersion: String) {
+    public init(viewModel: SettingsViewModel, localizedAppNameAndVersion: String, basalRateRecommendationsViewModel: BasalRateRecommendationsViewModel? = nil) {
         self.viewModel = viewModel
         self.versionUpdateViewModel = viewModel.versionUpdateViewModel
         self.localizedAppNameAndVersion = localizedAppNameAndVersion
+        self.basalRateRecommendationsViewModel = basalRateRecommendationsViewModel
     }
     
     public var body: some View {
@@ -294,7 +297,17 @@ extension SettingsView {
                             imageView: Image("Therapy Icon"),
                             label: NSLocalizedString("Therapy Settings", comment: "Title text for button to Therapy Settings"),
                             descriptiveText: NSLocalizedString("Diabetes Treatment", comment: "Descriptive text for Therapy Settings"))
-            
+
+            if let basalRecommendationsVM = basalRateRecommendationsViewModel {
+                NavigationLink(destination: BasalRateRecommendationsView(viewModel: basalRecommendationsVM)) {
+                    LargeButton(action: { },
+                               includeArrow: true,
+                               imageView: Image(systemName: "chart.line.uptrend.xyaxis"),
+                               label: NSLocalizedString("Basal Rate Recommendations", comment: "Title text for button to Basal Rate Recommendations"),
+                               descriptiveText: NSLocalizedString("AI-powered analysis of your insulin needs", comment: "Descriptive text for Basal Rate Recommendations"))
+                }
+            }
+
             ForEach(pluginMenuItems.filter {$0.section == .configuration}) { item in
                 item.view
             }

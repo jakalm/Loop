@@ -73,6 +73,10 @@
 		1DFE9E172447B6270082C280 /* UserNotificationAlertSchedulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DFE9E162447B6270082C280 /* UserNotificationAlertSchedulerTests.swift */; };
 		36F166DD2EB2A97400137813 /* DeferredMealBolus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166DC2EB2A97400137813 /* DeferredMealBolus.swift */; };
 		36F166DF2EB2AFE900137813 /* DeferredMealBolusSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166DE2EB2AFE900137813 /* DeferredMealBolusSelectionView.swift */; };
+		36F166E12EB2B7D900137813 /* BasalRateRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166E02EB2B7D900137813 /* BasalRateRecommendationsView.swift */; };
+		36F166E32EB2B81B00137813 /* BasalRateRecommendation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166E22EB2B81B00137813 /* BasalRateRecommendation.swift */; };
+		36F166E52EB2B8A500137813 /* SettingsRecommendationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166E42EB2B8A500137813 /* SettingsRecommendationManager.swift */; };
+		36F166E72EB2B8BC00137813 /* BasalRateRecommendationsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166E62EB2B8BC00137813 /* BasalRateRecommendationsViewModel.swift */; };
 		43027F0F1DFE0EC900C51989 /* HKUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F526D5E1DF2459000A04910 /* HKUnit.swift */; };
 		4302F4E11D4E9C8900F0FCAF /* TextFieldTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4302F4E01D4E9C8900F0FCAF /* TextFieldTableViewController.swift */; };
 		4302F4E31D4EA54200F0FCAF /* InsulinDeliveryTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4302F4E21D4EA54200F0FCAF /* InsulinDeliveryTableViewController.swift */; };
@@ -794,6 +798,10 @@
 		1DFE9E162447B6270082C280 /* UserNotificationAlertSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserNotificationAlertSchedulerTests.swift; sourceTree = "<group>"; };
 		36F166DC2EB2A97400137813 /* DeferredMealBolus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeferredMealBolus.swift; sourceTree = "<group>"; };
 		36F166DE2EB2AFE900137813 /* DeferredMealBolusSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeferredMealBolusSelectionView.swift; sourceTree = "<group>"; };
+		36F166E02EB2B7D900137813 /* BasalRateRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasalRateRecommendationsView.swift; sourceTree = "<group>"; };
+		36F166E22EB2B81B00137813 /* BasalRateRecommendation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasalRateRecommendation.swift; sourceTree = "<group>"; };
+		36F166E42EB2B8A500137813 /* SettingsRecommendationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRecommendationManager.swift; sourceTree = "<group>"; };
+		36F166E62EB2B8BC00137813 /* BasalRateRecommendationsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasalRateRecommendationsViewModel.swift; sourceTree = "<group>"; };
 		3D03C6DA2AACE6AC00FDE5D2 /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/Intents.strings; sourceTree = "<group>"; };
 		4302F4E01D4E9C8900F0FCAF /* TextFieldTableViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TextFieldTableViewController.swift; sourceTree = "<group>"; };
 		4302F4E21D4EA54200F0FCAF /* InsulinDeliveryTableViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InsulinDeliveryTableViewController.swift; sourceTree = "<group>"; };
@@ -1950,6 +1958,7 @@
 		43757D131C06F26C00910CB9 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				36F166E22EB2B81B00137813 /* BasalRateRecommendation.swift */,
 				36F166DC2EB2A97400137813 /* DeferredMealBolus.swift */,
 				DDC389F52A2B61750066E2E8 /* ApplicationFactorStrategy.swift */,
 				B4E2022F2661063E009421B5 /* AutomaticDosingStatus.swift */,
@@ -2256,6 +2265,7 @@
 		43F5C2CF1B92A2ED003EB13D /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				36F166E02EB2B7D900137813 /* BasalRateRecommendationsView.swift */,
 				36F166DE2EB2AFE900137813 /* DeferredMealBolusSelectionView.swift */,
 				1452F4AA2A851EDF00F8B9E4 /* AddEditFavoriteFoodView.swift */,
 				B4001CED28CBBC82002FB414 /* AlertManagementView.swift */,
@@ -2296,6 +2306,7 @@
 		43F5C2E41B93C5D4003EB13D /* Managers */ = {
 			isa = PBXGroup;
 			children = (
+				36F166E42EB2B8A500137813 /* SettingsRecommendationManager.swift */,
 				B42D124228D371C400E43D22 /* AlertMuter.swift */,
 				1D6B1B6626866D89009AC446 /* AlertPermissionsChecker.swift */,
 				439897361CD2F80600223065 /* AnalyticsServicesManager.swift */,
@@ -2631,6 +2642,7 @@
 		897A5A9724C22DCE00C4E71D /* View Models */ = {
 			isa = PBXGroup;
 			children = (
+				36F166E62EB2B8BC00137813 /* BasalRateRecommendationsViewModel.swift */,
 				1452F4A82A851C9400F8B9E4 /* AddEditFavoriteFoodViewModel.swift */,
 				897A5A9824C22DE800C4E71D /* BolusEntryViewModel.swift */,
 				149A28BA2A853E5100052EDF /* CarbEntryViewModel.swift */,
@@ -3694,6 +3706,7 @@
 				43CE7CDE1CA8B63E003CC1B0 /* Data.swift in Sources */,
 				E9BB27AB23B85C3500FB4987 /* SleepStore.swift in Sources */,
 				C1F7822627CC056900C0919A /* SettingsManager.swift in Sources */,
+				36F166E32EB2B81B00137813 /* BasalRateRecommendation.swift in Sources */,
 				1452F4AD2A851F8800F8B9E4 /* HowAbsorptionTimeWorksView.swift in Sources */,
 				C16575712538A36B004AE16E /* CGMStalenessMonitor.swift in Sources */,
 				1D080CBD2473214A00356610 /* AlertStore.xcdatamodeld in Sources */,
@@ -3701,6 +3714,7 @@
 				149A28BB2A853E5100052EDF /* CarbEntryViewModel.swift in Sources */,
 				C19008FE25225D3900721625 /* SimpleBolusCalculator.swift in Sources */,
 				C1F8B243223E73FD00DD66CF /* BolusProgressTableViewCell.swift in Sources */,
+				36F166E52EB2B8A500137813 /* SettingsRecommendationManager.swift in Sources */,
 				89D6953E23B6DF8A002B3066 /* PotentialCarbEntryTableViewCell.swift in Sources */,
 				89CA2B30226C0161004D9350 /* DirectoryObserver.swift in Sources */,
 				1DA649A7244126CD00F61E75 /* UserNotificationAlertScheduler.swift in Sources */,
@@ -3722,6 +3736,7 @@
 				E95D380524EADF78005E2F50 /* GlucoseStoreProtocol.swift in Sources */,
 				43E3449F1B9D68E900C85C07 /* StatusTableViewController.swift in Sources */,
 				B42D124328D371C400E43D22 /* AlertMuter.swift in Sources */,
+				36F166E12EB2B7D900137813 /* BasalRateRecommendationsView.swift in Sources */,
 				A96DAC242838325900D94E38 /* DiagnosticLog.swift in Sources */,
 				A9CBE45A248ACBE1008E7BA2 /* DosingDecisionStore+SimulatedCoreData.swift in Sources */,
 				A9C62D8A2331703100535612 /* ServicesManager.swift in Sources */,
@@ -3763,6 +3778,7 @@
 				1DDE273D24AEA4B000796622 /* SettingsViewModel.swift in Sources */,
 				DD3DBD292A33AFE9000F8B5B /* IntegralRetrospectiveCorrectionSelectionView.swift in Sources */,
 				A9347F3124E7521800C99C34 /* CarbBackfillRequestUserInfo.swift in Sources */,
+				36F166E72EB2B8BC00137813 /* BasalRateRecommendationsViewModel.swift in Sources */,
 				A9CBE458248AB564008E7BA2 /* DoseStore+SimulatedCoreData.swift in Sources */,
 				897A5A9924C22DE800C4E71D /* BolusEntryViewModel.swift in Sources */,
 				4374B5EF209D84BF00D17AA8 /* OSLog.swift in Sources */,

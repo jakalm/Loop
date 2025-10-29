@@ -1636,8 +1636,21 @@ final class StatusTableViewController: LoopChartsTableViewController {
                                           isOnboardingComplete: onboardingManager.isComplete,
                                           therapySettingsViewModelDelegate: deviceManager,
                                           delegate: self)
+
+        // Create basal rate recommendations view model with the stores
+        let basalRecommendationsVM = BasalRateRecommendationsViewModel(
+            glucoseStore: deviceManager.glucoseStore,
+            carbStore: deviceManager.carbStore,
+            doseStore: deviceManager.doseStore,
+            settings: { [weak self] in self?.deviceManager.loopManager.settings ?? LoopSettings() }
+        )
+
         let hostingController = DismissibleHostingController(
-            rootView: SettingsView(viewModel: viewModel, localizedAppNameAndVersion: supportManager.localizedAppNameAndVersion)
+            rootView: SettingsView(
+                viewModel: viewModel,
+                localizedAppNameAndVersion: supportManager.localizedAppNameAndVersion,
+                basalRateRecommendationsViewModel: basalRecommendationsVM
+            )
                 .environmentObject(deviceManager.displayGlucosePreference)
                 .environment(\.appName, Bundle.main.bundleDisplayName),
             isModalInPresentation: false)
