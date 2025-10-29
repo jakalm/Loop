@@ -54,6 +54,8 @@ protocol BolusEntryViewModelDelegate: AnyObject {
     func roundBolusVolume(units: Double) -> Double
 
     func updateRemoteRecommendation()
+
+    func createDeferredMealBolus(originalAmount: Double, carbEntryUUID: UUID?)
 }
 
 @MainActor
@@ -418,6 +420,18 @@ final class BolusEntryViewModel: ObservableObject {
 
         let now = self.now()
         delegate.storeManualBolusDosingDecision(dosingDecision, withDate: now)
+
+        // If deferred meal bolus feature is enabled and we have a carb entry,
+        // create a deferred bolus to deliver the full intended amount later if needed
+        if UserDefaults.standard.deferredMealBolusEnabled,
+           let storedCarbEntry = dosingDecision.carbEntry,
+           enteredBolusAmount > 0
+        {
+            delegate.createDeferredMealBolus(
+                originalAmount: enteredBolusAmount,
+                carbEntryUUID: storedCarbEntry.uuid
+            )
+        }
 
         if amountToDeliver > 0 {
             savedPreMealOverride = nil

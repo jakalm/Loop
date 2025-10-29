@@ -41,6 +41,7 @@ public struct ExperimentRow: View {
 public struct ExperimentsSettingsView: View {
     @AppStorage(UserDefaults.Key.GlucoseBasedApplicationFactorEnabled.rawValue) private var isGlucoseBasedApplicationFactorEnabled = false
     @AppStorage(UserDefaults.Key.IntegralRetrospectiveCorrectionEnabled.rawValue) private var isIntegralRetrospectiveCorrectionEnabled = false
+    @AppStorage(UserDefaults.Key.DeferredMealBolusEnabled.rawValue) private var isDeferredMealBolusEnabled = false
     var automaticDosingStrategy: AutomaticDosingStrategy
 
     public var body: some View {
@@ -70,6 +71,11 @@ public struct ExperimentsSettingsView: View {
                         name: NSLocalizedString("Integral Retrospective Correction", comment: "Title of integral retrospective correction experiment"),
                         enabled: isIntegralRetrospectiveCorrectionEnabled)
                 }
+                NavigationLink(destination: DeferredMealBolusSelectionView(isDeferredMealBolusEnabled: $isDeferredMealBolusEnabled, automaticDosingStrategy: automaticDosingStrategy)) {
+                    ExperimentRow(
+                        name: NSLocalizedString("Deferred Meal Bolus", comment: "Title of deferred meal bolus experiment"),
+                        enabled: isDeferredMealBolusEnabled && automaticDosingStrategy == .automaticBolus)
+                }
                 Spacer()
             }
             .padding()
@@ -83,6 +89,7 @@ extension UserDefaults {
     fileprivate enum Key: String {
         case GlucoseBasedApplicationFactorEnabled = "com.loopkit.algorithmExperiments.glucoseBasedApplicationFactorEnabled"
         case IntegralRetrospectiveCorrectionEnabled = "com.loopkit.algorithmExperiments.integralRetrospectiveCorrectionEnabled"
+        case DeferredMealBolusEnabled = "com.loopkit.algorithmExperiments.deferredMealBolusEnabled"
     }
 
     var glucoseBasedApplicationFactorEnabled: Bool {
@@ -100,6 +107,15 @@ extension UserDefaults {
         }
         set {
             set(newValue, forKey: Key.IntegralRetrospectiveCorrectionEnabled.rawValue)
+        }
+    }
+
+    var deferredMealBolusEnabled: Bool {
+        get {
+            bool(forKey: Key.DeferredMealBolusEnabled.rawValue) as Bool
+        }
+        set {
+            set(newValue, forKey: Key.DeferredMealBolusEnabled.rawValue)
         }
     }
 

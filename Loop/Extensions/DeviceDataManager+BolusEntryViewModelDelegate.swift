@@ -94,4 +94,8 @@ extension DeviceDataManager: BolusEntryViewModelDelegate, ManualDoseViewModelDel
     func updateRemoteRecommendation() {
         loopManager.updateRemoteRecommendation()
     }
+
+    func createDeferredMealBolus(originalAmount: Double, carbEntryUUID: UUID?) {
+        loopManager.createDeferredMealBolus(originalAmount: originalAmount, carbEntryUUID: carbEntryUUID)
+    }
 }

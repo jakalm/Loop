@@ -43,6 +43,8 @@ final class LoopDataManager {
 
     let latestStoredSettingsProvider: LatestStoredSettingsProvider
 
+    private let deferredMealBolusStore: DeferredMealBolusStore
+
     weak var delegate: LoopDataManagerDelegate?
 
     private let logger = DiagnosticLog(category: "LoopDataManager")
@@ -109,6 +111,8 @@ final class LoopDataManager {
         self.glucoseStore = glucoseStore
 
         self.dosingDecisionStore = dosingDecisionStore
+
+        self.deferredMealBolusStore = DeferredMealBolusStore()
 
         self.now = now
 
@@ -671,6 +675,12 @@ extension LoopDataManager {
                         settings.clearOverride(matching: .preMeal)
                     }
 
+                    // If replacing an entry, remove any deferred boluses for the old entry
+                    if let replacingEntry = replacingEntry, let uuid = replacingEntry.uuid {
+                        self.deferredMealBolusStore.removeForCarbEntry(uuid: uuid)
+                        self.logger.default("Removed deferred boluses for replaced carb entry %@", uuid.uuidString)
+                    }
+
                     self.carbEffect = nil
                     self.carbsOnBoard = nil
                     completion(.success(storedCarbEntry))
@@ -689,10 +699,28 @@ extension LoopDataManager {
 
     func deleteCarbEntry(_ oldEntry: StoredCarbEntry, completion: @escaping (_ result: CarbStoreResult<Bool>) -> Void) {
         carbStore.deleteCarbEntry(oldEntry) { result in
+            // Remove any deferred boluses associated with this carb entry
+            if case .success = result, let uuid = oldEntry.uuid {
+                self.deferredMealBolusStore.removeForCarbEntry(uuid: uuid)
+                self.logger.default("Removed deferred boluses for deleted carb entry %@", uuid.uuidString)
+            }
             completion(result)
         }
     }
 
+    /// Creates a deferred meal bolus to track insulin that should be delivered when glucose predictions are safe
+    ///
+    /// - Parameters:
+    ///   - originalAmount: The full intended bolus amount in units
+    ///   - carbEntryUUID: The UUID of the associated carb entry
+    func createDeferredMealBolus(originalAmount: Double, carbEntryUUID: UUID?) {
+        let deferredBolus = DeferredMealBolus(
+            originalAmount: originalAmount,
+            carbEntryUUID: carbEntryUUID
+        )
+        deferredMealBolusStore.add(deferredBolus)
+        logger.default("Created deferred meal bolus: %.2f units for carb entry %@", originalAmount, carbEntryUUID?.uuidString ?? "none")
+    }
 
     /// Adds a bolus requested of the pump, but not confirmed.
     ///
@@ -1790,7 +1818,7 @@ extension LoopDataManager {
                 lastTempBasal = nil
             }
 
-            let dosingRecommendation: AutomaticDoseRecommendation?
+            var dosingRecommendation: AutomaticDoseRecommendation?
 
             // automaticDosingIOBLimit calculated from the user entered maxBolus
             let automaticDosingIOBLimit = maxBolus! * 2.0
@@ -1850,6 +1878,67 @@ extension LoopDataManager {
                     isBasalRateScheduleOverrideActive: settings.scheduleOverride?.isBasalRateScheduleOverriden(at: startDate) == true
                 )
                 dosingRecommendation = AutomaticDoseRecommendation(basalAdjustment: temp)
+            }
+
+            // Check for deferred meal boluses and add them if safe to deliver
+            if UserDefaults.standard.deferredMealBolusEnabled,
+               var doseRec = dosingRecommendation,
+               case .automaticBolus = settings.automaticDosingStrategy
+            {
+                let activeDeferredBoluses = deferredMealBolusStore.getActiveDeferredBoluses(at: startDate)
+                if !activeDeferredBoluses.isEmpty {
+                    // Check if predictions are safe (no values below target)
+                    let minPredictedGlucose = predictedGlucose.map { $0.quantity }.min()
+                    let targetRange = glucoseTargetRange!.quantityRange(at: startDate)
+                    let targetLowerBound = targetRange.lowerBound
+
+                    if let minGlucose = minPredictedGlucose, minGlucose >= targetLowerBound {
+                        // Safe to deliver deferred boluses
+                        var totalDeferredAmount: Double = 0
+                        for deferredBolus in activeDeferredBoluses {
+                            totalDeferredAmount += deferredBolus.remainingAmount
+                        }
+
+                        if totalDeferredAmount > 0 {
+                            let currentBolusAmount = doseRec.bolusUnits ?? 0
+                            let combinedAmount = currentBolusAmount + totalDeferredAmount
+
+                            // Respect max bolus limit
+                            let maxAllowed = min(combinedAmount, maxBolus!, iobHeadroom)
+                            let actualDeferredAmount = maxAllowed - currentBolusAmount
+
+                            if actualDeferredAmount > 0 {
+                                self.logger.default("Adding deferred bolus: %.2f units (%.2f units requested, %.2f IOB headroom)", actualDeferredAmount, totalDeferredAmount, iobHeadroom)
+                                doseRec = AutomaticDoseRecommendation(
+                                    basalAdjustment: doseRec.basalAdjustment,
+                                    bolusUnits: maxAllowed
+                                )
+                                dosingRecommendation = doseRec
+
+                                // Record delivery toward deferred boluses
+                                // Distribute the actual delivered amount proportionally across active deferred boluses
+                                var remainingToDistribute = actualDeferredAmount
+                                for deferredBolus in activeDeferredBoluses {
+                                    if remainingToDistribute <= 0 { break }
+
+                                    let amountForThis = min(remainingToDistribute, deferredBolus.remainingAmount)
+                                    if amountForThis > 0 {
+                                        deferredMealBolusStore.recordDelivery(id: deferredBolus.id, amount: amountForThis)
+                                        remainingToDistribute -= amountForThis
+                                        self.logger.default("Recording %.2f units toward deferred bolus %@", amountForThis, deferredBolus.id.uuidString)
+                                    }
+                                }
+
+                                // Clean up completed deferred boluses
+                                deferredMealBolusStore.cleanupCompleted(at: startDate)
+                            }
+                        }
+                    } else {
+                        self.logger.default("Deferred bolus delivery blocked: min predicted glucose %.1f below target %.1f",
+                                          minPredictedGlucose?.doubleValue(for: .milligramsPerDeciliter) ?? 0,
+                                          targetLowerBound.doubleValue(for: .milligramsPerDeciliter))
+                    }
+                }
             }
 
             if let dosingRecommendation = dosingRecommendation {
