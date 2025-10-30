@@ -53,7 +53,8 @@ struct BasalRateRecommendation: Identifiable {
     }
 
     var recommendation: String {
-        if abs(glucoseTrend) < 5 {
+        // If change is less than minimum step size (0.05 U/hr), basal is appropriate
+        if abs(changeAmount) < 0.05 {
             return "Basal rate appears appropriate"
         } else if glucoseTrend > 0 {
             return "Consider increasing basal rate"

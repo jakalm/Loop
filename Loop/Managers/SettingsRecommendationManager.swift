@@ -23,7 +23,6 @@ class SettingsRecommendationManager {
     private let minimumCarbFreeHours: TimeInterval = 3 * .hours(1)
     private let minimumMeasurementHours: TimeInterval = 3 * .hours(1)
     private let analysisWindowStride: TimeInterval = 1 * .hours(1) // Check every hour
-    private let daysToAnalyze = 14
 
     init(glucoseStore: GlucoseStoreProtocol,
          carbStore: CarbStoreProtocol,
@@ -36,7 +35,7 @@ class SettingsRecommendationManager {
     }
 
     /// Generate basal rate recommendations based on historical data
-    func generateBasalRateRecommendations(completion: @escaping ([BasalRateRecommendation]) -> Void) {
+    func generateBasalRateRecommendations(daysToAnalyze: Int, completion: @escaping ([BasalRateRecommendation]) -> Void) {
         let endDate = Date()
         let startDate = endDate.addingTimeInterval(-TimeInterval(daysToAnalyze) * .hours(24))
 
@@ -225,20 +224,56 @@ class SettingsRecommendationManager {
         from windows: [BasalAnalysisWindow],
         glucoseSamples: [StoredGlucoseSample]
     ) -> [BasalRateRecommendation] {
-        // Group windows by hour of day
-        let windowsByHour = Dictionary(grouping: windows) { $0.hourOfDay }
+        // Split day into 6 periods of 4 hours each
+        let periodHours = 4
+        let numberOfPeriods = 6
+
+        // Group windows by 4-hour time period (0-4, 4-8, 8-12, 12-16, 16-20, 20-24)
+        let windowsByPeriod = Dictionary(grouping: windows) { window -> Int in
+            return window.hourOfDay / periodHours
+        }
 
         var recommendations: [BasalRateRecommendation] = []
 
-        for (hour, hourWindows) in windowsByHour.sorted(by: { $0.key < $1.key }) {
-            guard !hourWindows.isEmpty else { continue }
+        // Generate recommendation for each of the 6 periods
+        for periodIndex in 0..<numberOfPeriods {
+            let periodStartHour = periodIndex * periodHours
+            let periodEndHour = periodStartHour + periodHours
+            let periodWindows = windowsByPeriod[periodIndex] ?? []
+
+            // Create time representation for this period
+            let calendar = Calendar.current
+            let now = Date()
+            let periodStartDate = calendar.date(bySettingHour: periodStartHour, minute: 0, second: 0, of: now) ?? now
+            let periodEndDate = calendar.date(bySettingHour: periodEndHour, minute: 0, second: 0, of: now) ?? now
+
+            if periodWindows.isEmpty {
+                // No data for this period - create a recommendation indicating insufficient data
+                let sampleDate = periodStartDate
+                let currentBasal = settings().basalRateSchedule?.value(at: sampleDate) ?? 0.0
+
+                let recommendation = BasalRateRecommendation(
+                    startDate: periodStartDate,
+                    endDate: periodEndDate,
+                    hourOfDay: periodStartHour,
+                    currentBasalRate: currentBasal,
+                    recommendedBasalRate: currentBasal,
+                    glucoseTrend: 0,
+                    startGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0),
+                    endGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0),
+                    confidence: 0,
+                    sampleCount: 0
+                )
+                recommendations.append(recommendation)
+                continue
+            }
 
             var totalTrend: Double = 0
             var validWindowCount = 0
             var startGlucoseValues: [HKQuantity] = []
             var endGlucoseValues: [HKQuantity] = []
 
-            for window in hourWindows {
+            for window in periodWindows {
                 let windowGlucose = glucoseSamples.filter { sample in
                     sample.startDate >= window.measurementStart && sample.startDate <= window.measurementEnd
                 }.sorted { $0.startDate < $1.startDate }
@@ -258,40 +293,57 @@ class SettingsRecommendationManager {
                 endGlucoseValues.append(lastGlucose.quantity)
             }
 
-            guard validWindowCount > 0 else { continue }
+            let averageTrend = validWindowCount > 0 ? totalTrend / Double(validWindowCount) : 0
 
-            let averageTrend = totalTrend / Double(validWindowCount)
-
-            // Get current basal rate for this hour
-            let sampleDate = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date()) ?? Date()
+            // Get average basal rate for this period (sample at the start of the period)
+            let sampleDate = periodStartDate
             let currentBasal = settings().basalRateSchedule?.value(at: sampleDate) ?? 0.0
 
             // Calculate recommended adjustment
             // Rule of thumb: ~1 mg/dL/hour change suggests ~0.05 U/hr adjustment needed
+            // Positive trend (rising glucose) = need more insulin
+            // Negative trend (falling glucose) = need less insulin
             let basalAdjustment = averageTrend * 0.05 / 10.0
-            let recommendedBasal = max(0, currentBasal - basalAdjustment)
+            let rawRecommendedBasal = currentBasal + basalAdjustment
+
+            // If change is less than half the minimum step (0.025 U/hr), keep current basal
+            let recommendedBasal: Double
+            if abs(basalAdjustment) < 0.025 {
+                recommendedBasal = currentBasal
+            } else {
+                // Round to nearest 0.05 U/hr step
+                recommendedBasal = max(0, round(rawRecommendedBasal / 0.05) * 0.05)
+            }
 
             // Calculate confidence based on sample count and trend consistency
             let confidence = min(1.0, Double(validWindowCount) / 10.0)
 
-            let avgStartGlucose = startGlucoseValues.reduce(HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0)) { result, quantity in
-                HKQuantity(unit: .milligramsPerDeciliter,
-                          doubleValue: result.doubleValue(for: .milligramsPerDeciliter) + quantity.doubleValue(for: .milligramsPerDeciliter))
-            }
-            let avgStart = HKQuantity(unit: .milligramsPerDeciliter,
-                                     doubleValue: avgStartGlucose.doubleValue(for: .milligramsPerDeciliter) / Double(startGlucoseValues.count))
+            let avgStart: HKQuantity
+            let avgEnd: HKQuantity
 
-            let avgEndGlucose = endGlucoseValues.reduce(HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0)) { result, quantity in
-                HKQuantity(unit: .milligramsPerDeciliter,
-                          doubleValue: result.doubleValue(for: .milligramsPerDeciliter) + quantity.doubleValue(for: .milligramsPerDeciliter))
+            if !startGlucoseValues.isEmpty {
+                let avgStartGlucose = startGlucoseValues.reduce(HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0)) { result, quantity in
+                    HKQuantity(unit: .milligramsPerDeciliter,
+                              doubleValue: result.doubleValue(for: .milligramsPerDeciliter) + quantity.doubleValue(for: .milligramsPerDeciliter))
+                }
+                avgStart = HKQuantity(unit: .milligramsPerDeciliter,
+                                         doubleValue: avgStartGlucose.doubleValue(for: .milligramsPerDeciliter) / Double(startGlucoseValues.count))
+
+                let avgEndGlucose = endGlucoseValues.reduce(HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0)) { result, quantity in
+                    HKQuantity(unit: .milligramsPerDeciliter,
+                              doubleValue: result.doubleValue(for: .milligramsPerDeciliter) + quantity.doubleValue(for: .milligramsPerDeciliter))
+                }
+                avgEnd = HKQuantity(unit: .milligramsPerDeciliter,
+                                       doubleValue: avgEndGlucose.doubleValue(for: .milligramsPerDeciliter) / Double(endGlucoseValues.count))
+            } else {
+                avgStart = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0)
+                avgEnd = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0)
             }
-            let avgEnd = HKQuantity(unit: .milligramsPerDeciliter,
-                                   doubleValue: avgEndGlucose.doubleValue(for: .milligramsPerDeciliter) / Double(endGlucoseValues.count))
 
             let recommendation = BasalRateRecommendation(
-                startDate: hourWindows.first!.measurementStart,
-                endDate: hourWindows.last!.measurementEnd,
-                hourOfDay: hour,
+                startDate: periodStartDate,
+                endDate: periodEndDate,
+                hourOfDay: periodStartHour,
                 currentBasalRate: currentBasal,
                 recommendedBasalRate: recommendedBasal,
                 glucoseTrend: averageTrend,

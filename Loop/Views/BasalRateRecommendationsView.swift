@@ -41,6 +41,21 @@ public struct BasalRateRecommendationsView: View {
 
                 Divider()
 
+                // Analysis period picker
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Analysis Period")
+                        .font(.headline)
+
+                    Picker("Days", selection: $viewModel.selectedDays) {
+                        Text("14 days").tag(14)
+                        Text("30 days").tag(30)
+                        Text("90 days").tag(90)
+                        Text("180 days").tag(180)
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+                .padding(.horizontal)
+
                 // Info box
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -124,35 +139,49 @@ public struct BasalRateRecommendationsView: View {
 
                 Spacer()
 
-                confidenceBadge(recommendation.confidence)
+                if recommendation.sampleCount > 0 {
+                    confidenceBadge(recommendation.confidence)
+                }
             }
 
             Divider()
 
-            // Glucose trend
-            HStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Glucose Trend")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+            // Show "Insufficient Data" message if no samples
+            if recommendation.sampleCount == 0 {
+                VStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.title2)
+                        .foregroundColor(.orange)
 
-                    HStack(spacing: 4) {
-                        trendIcon(for: recommendation.glucoseTrend)
-                        Text(glucoseTrendString(recommendation.glucoseTrend))
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                    }
-                }
-
-                Spacer()
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Avg Range")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Text("\(glucoseString(recommendation.startGlucose)) → \(glucoseString(recommendation.endGlucose))")
+                    Text("Insufficient Data")
                         .font(.subheadline)
+                        .fontWeight(.semibold)
+
+                    Text("No qualifying analysis periods found for this time range in the last \(viewModel.daysAnalyzed) days.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    Text("Current Basal: \(String(format: "%.2f U/hr", recommendation.currentBasalRate))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            } else {
+
+            // Glucose trend
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Glucose Trend")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                HStack(spacing: 4) {
+                    trendIcon(for: recommendation.glucoseTrend)
+                    Text(glucoseTrendString(recommendation.glucoseTrend))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
                 }
             }
 
@@ -203,6 +232,7 @@ public struct BasalRateRecommendationsView: View {
             Text("\(recommendation.sampleCount) qualifying period\(recommendation.sampleCount == 1 ? "" : "s") found")
                 .font(.caption2)
                 .foregroundColor(.secondary)
+            }
         }
         .padding()
         .background(Color(UIColor.secondarySystemBackground))
@@ -215,7 +245,7 @@ public struct BasalRateRecommendationsView: View {
 
         let calendar = Calendar.current
         let startDate = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: Date()) ?? Date()
-        let endDate = calendar.date(byAdding: .hour, value: 3, to: startDate) ?? Date()
+        let endDate = calendar.date(byAdding: .hour, value: 4, to: startDate) ?? Date()
 
         return "\(startFormatter.string(from: startDate)) - \(startFormatter.string(from: endDate))"
     }
@@ -265,7 +295,23 @@ public struct BasalRateRecommendationsView: View {
     }
 
     private func glucoseTrendString(_ trend: Double) -> String {
-        return String(format: "%+.1f mg/dL/hr", trend)
+        // Trend is stored as mg/dL per hour, convert to user's preferred unit
+        let trendValue: Double
+        let unitString: String
+        let decimalPlaces: Int
+
+        if displayGlucosePreference.unit == .millimolesPerLiter {
+            // Convert mg/dL to mmol/L (divide by 18.018)
+            trendValue = trend / 18.018
+            unitString = "mmol/L/hr"
+            decimalPlaces = 2
+        } else {
+            trendValue = trend
+            unitString = "mg/dL/hr"
+            decimalPlaces = 1
+        }
+
+        return String(format: "%+.\(decimalPlaces)f \(unitString)", trendValue)
     }
 
     private func glucoseString(_ quantity: HKQuantity) -> String {

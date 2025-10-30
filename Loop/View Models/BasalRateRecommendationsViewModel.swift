@@ -14,8 +14,14 @@ import LoopCore
 public class BasalRateRecommendationsViewModel: ObservableObject {
     @Published var recommendations: [BasalRateRecommendation] = []
     @Published var isAnalyzing: Bool = false
+    @Published var selectedDays: Int = 30 {
+        didSet {
+            // Auto-refresh when selection changes
+            refreshRecommendations()
+        }
+    }
 
-    let daysAnalyzed = 14
+    var daysAnalyzed: Int { selectedDays }
 
     private let recommendationManager: SettingsRecommendationManager
 
@@ -37,7 +43,7 @@ public class BasalRateRecommendationsViewModel: ObservableObject {
         isAnalyzing = true
         recommendations = []
 
-        recommendationManager.generateBasalRateRecommendations { [weak self] newRecommendations in
+        recommendationManager.generateBasalRateRecommendations(daysToAnalyze: selectedDays) { [weak self] newRecommendations in
             DispatchQueue.main.async {
                 self?.recommendations = newRecommendations
                 self?.isAnalyzing = false
