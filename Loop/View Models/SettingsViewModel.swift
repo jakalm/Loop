@@ -12,6 +12,7 @@ import LoopKit
 import LoopKitUI
 import SwiftUI
 import HealthKit
+import os.log
 
 public class DeviceViewModel<T>: ObservableObject {
     public typealias DeleteTestingDataFunc = () -> Void
@@ -51,19 +52,22 @@ public typealias PumpManagerViewModel = DeviceViewModel<PumpManagerDescriptor>
 
 public protocol SettingsViewModelDelegate: AnyObject {
     func dosingEnabledChanged(_: Bool)
+    func loopModeChanged(_: LoopMode)
     func dosingStrategyChanged(_: AutomaticDosingStrategy)
     func didTapIssueReport()
     var closedLoopDescriptiveText: String? { get }
 }
 
 public class SettingsViewModel: ObservableObject {
-    
+
+    private let log = OSLog(category: "SettingsViewModel")
+
     let alertPermissionsChecker: AlertPermissionsChecker
 
     let alertMuter: AlertMuter
 
     let versionUpdateViewModel: VersionUpdateViewModel
-    
+
     private weak var delegate: SettingsViewModelDelegate?
 
     func didTapIssueReport() {
@@ -99,6 +103,12 @@ public class SettingsViewModel: ObservableObject {
        }
     }
 
+    @Published var loopMode: LoopMode
+
+    func loopModeDidChange(_ newMode: LoopMode) {
+        delegate?.loopModeChanged(newMode)
+    }
+
     var showDeleteTestData: Bool {
         availableSupports.contains(where: { $0.showsDeleteTestDataUI })
     }
@@ -115,6 +125,7 @@ public class SettingsViewModel: ObservableObject {
                 therapySettings: @escaping () -> TherapySettings,
                 sensitivityOverridesEnabled: Bool,
                 initialDosingEnabled: Bool,
+                initialLoopMode: LoopMode? = nil,
                 isClosedLoopAllowed: Published<Bool>.Publisher,
                 automaticDosingStrategy: AutomaticDosingStrategy,
                 availableSupports: [SupportUI],
@@ -132,6 +143,7 @@ public class SettingsViewModel: ObservableObject {
         self.therapySettings = therapySettings
         self.sensitivityOverridesEnabled = sensitivityOverridesEnabled
         self.closedLoopPreference = initialDosingEnabled
+        self.loopMode = initialLoopMode ?? (initialDosingEnabled ? .closed : .open)
         self.isClosedLoopAllowed = false
         self.automaticDosingStrategy = automaticDosingStrategy
         self.availableSupports = availableSupports

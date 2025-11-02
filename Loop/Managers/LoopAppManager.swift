@@ -262,10 +262,23 @@ class LoopAppManager: NSObject {
         analyticsServicesManager.application(didFinishLaunchingWithOptions: launchOptions)
 
 
+        // Observe settings changes to update automatic dosing status
+        // Note: automaticDosingEnabled is now computed from loopMode and glucose level
+        // The loopMode is already synced in LoopDataManager.mutateSettings
         automaticDosingStatus.$isAutomaticDosingAllowed
-            .combineLatest(deviceDataManager.loopManager.$dosingEnabled)
-            .map { $0 && $1 }
-            .assign(to: \.automaticDosingStatus.automaticDosingEnabled, on: self)
+            .sink { [weak self] allowed in
+                // If automatic dosing is disallowed, switch to open loop
+                // BUT: Don't change calibration mode, as it manages its own dosing state based on glucose
+                if !allowed, let self = self {
+                    self.deviceDataManager.loopManager.mutateSettings { settings in
+                        // Only force open loop if currently in closed loop
+                        // Calibration mode should not be changed, as it dynamically enables/disables dosing
+                        if settings.loopMode == .closed {
+                            settings.loopMode = .open
+                        }
+                    }
+                }
+            }
             .store(in: &cancellables)
 
         state = state.next

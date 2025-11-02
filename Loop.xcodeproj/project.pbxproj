@@ -77,6 +77,8 @@
 		36F166E32EB2B81B00137813 /* BasalRateRecommendation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166E22EB2B81B00137813 /* BasalRateRecommendation.swift */; };
 		36F166E52EB2B8A500137813 /* SettingsRecommendationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166E42EB2B8A500137813 /* SettingsRecommendationManager.swift */; };
 		36F166E72EB2B8BC00137813 /* BasalRateRecommendationsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166E62EB2B8BC00137813 /* BasalRateRecommendationsViewModel.swift */; };
+		36F572482EB3F9010095322D /* LoopMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F572472EB3F9010095322D /* LoopMode.swift */; };
+		36F572492EB3F9010095322D /* LoopMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F572472EB3F9010095322D /* LoopMode.swift */; };
 		43027F0F1DFE0EC900C51989 /* HKUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F526D5E1DF2459000A04910 /* HKUnit.swift */; };
 		4302F4E11D4E9C8900F0FCAF /* TextFieldTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4302F4E01D4E9C8900F0FCAF /* TextFieldTableViewController.swift */; };
 		4302F4E31D4EA54200F0FCAF /* InsulinDeliveryTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4302F4E21D4EA54200F0FCAF /* InsulinDeliveryTableViewController.swift */; };
@@ -802,6 +804,7 @@
 		36F166E22EB2B81B00137813 /* BasalRateRecommendation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasalRateRecommendation.swift; sourceTree = "<group>"; };
 		36F166E42EB2B8A500137813 /* SettingsRecommendationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRecommendationManager.swift; sourceTree = "<group>"; };
 		36F166E62EB2B8BC00137813 /* BasalRateRecommendationsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasalRateRecommendationsViewModel.swift; sourceTree = "<group>"; };
+		36F572472EB3F9010095322D /* LoopMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopMode.swift; sourceTree = "<group>"; };
 		3D03C6DA2AACE6AC00FDE5D2 /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/Intents.strings; sourceTree = "<group>"; };
 		4302F4E01D4E9C8900F0FCAF /* TextFieldTableViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TextFieldTableViewController.swift; sourceTree = "<group>"; };
 		4302F4E21D4EA54200F0FCAF /* InsulinDeliveryTableViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InsulinDeliveryTableViewController.swift; sourceTree = "<group>"; };
@@ -2180,6 +2183,7 @@
 		43D9FFD021EAE05D00AF44BF /* LoopCore */ = {
 			isa = PBXGroup;
 			children = (
+				36F572472EB3F9010095322D /* LoopMode.swift */,
 				C1DA986B2843B6F9001D04CC /* PersistedProperty.swift */,
 				43DE92581C5479E4001FFDE1 /* PotentialCarbEntryUserInfo.swift */,
 				43C05CB721EBEA54006FB252 /* HKUnit.swift */,
@@ -3991,6 +3995,7 @@
 				43C05CC721EC2ABC006FB252 /* IdentifiableClass.swift in Sources */,
 				E9B3552B293591E70076AB04 /* MissedMealNotification.swift in Sources */,
 				4345E40221F67300009E00E5 /* PotentialCarbEntryUserInfo.swift in Sources */,
+				36F572482EB3F9010095322D /* LoopMode.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4012,6 +4017,7 @@
 				43C05CAD21EB2BBF006FB252 /* NSUserDefaults.swift in Sources */,
 				E9B3552A293591E70076AB04 /* MissedMealNotification.swift in Sources */,
 				4345E40121F67300009E00E5 /* PotentialCarbEntryUserInfo.swift in Sources */,
+				36F572492EB3F9010095322D /* LoopMode.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

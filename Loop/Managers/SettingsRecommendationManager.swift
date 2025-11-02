@@ -168,42 +168,42 @@ class SettingsRecommendationManager {
         doseEntries: [DoseEntry],
         glucoseSamples: [StoredGlucoseSample]
     ) -> Bool {
-        // Check for carbs in the entire period
+        // Check for carbs during the measurement period only
         let carbsInPeriod = carbEntries.filter { carb in
             let carbStart = carb.startDate
-            // Check if carb would still be active during our window
+            // Check if carb would still be active during the measurement window
             // Assuming max absorption of 8 hours
             let carbEndImpact = carbStart.addingTimeInterval(.hours(8))
-            return carbEndImpact > carbFreeStart && carbStart < measurementEnd
+            return carbEndImpact > measurementStart && carbStart < measurementEnd
         }
 
         if !carbsInPeriod.isEmpty {
             return false
         }
 
-        // Check for boluses or temp basals in the measurement period
+        // Check for boluses or temp basals that would affect the measurement period
+        // Insulin remains active for ~6 hours after a bolus
+        let insulinActionDuration: TimeInterval = 6 * .hours(1)
+        let bolusCheckStart = measurementStart.addingTimeInterval(-insulinActionDuration)
+
         let dosesInPeriod = doseEntries.filter { dose in
             let doseEnd = dose.endDate
             let doseStart = dose.startDate
 
-            // Check if dose overlaps with our analysis window
-            return doseStart < measurementEnd && doseEnd > carbFreeStart
-        }
-
-        // Filter to only non-basal doses (boluses, corrections) or temp basals
-        let invalidDoses = dosesInPeriod.filter { dose in
             switch dose.type {
-            case .bolus, .resume, .suspend:
-                return true
-            case .tempBasal:
-                // Temp basal is invalid if it's different from scheduled basal
-                return true
+            case .bolus:
+                // Check if bolus would still be active during measurement period
+                let bolusEndImpact = doseStart.addingTimeInterval(insulinActionDuration)
+                return bolusEndImpact > measurementStart && doseStart < measurementEnd
+            case .tempBasal, .resume, .suspend:
+                // Check if these overlap with measurement period
+                return doseStart < measurementEnd && doseEnd > measurementStart
             case .basal:
                 return false
             }
         }
 
-        if !invalidDoses.isEmpty {
+        if !dosesInPeriod.isEmpty {
             return false
         }
 
@@ -217,7 +217,67 @@ class SettingsRecommendationManager {
             return false
         }
 
+        // Check that glucose was within 4.0-11.0 mmol/L (72-198 mg/dL) for at least 3 hours
+        if !isGlucoseInRangeForMinimumDuration(
+            glucoseSamples: glucoseInWindow,
+            measurementStart: measurementStart,
+            measurementEnd: measurementEnd,
+            minimumDuration: 3 * .hours(1)
+        ) {
+            return false
+        }
+
         return true
+    }
+
+    /// Check if glucose was within the target range (4.0-11.0 mmol/L) for at least the specified duration
+    private func isGlucoseInRangeForMinimumDuration(
+        glucoseSamples: [StoredGlucoseSample],
+        measurementStart: Date,
+        measurementEnd: Date,
+        minimumDuration: TimeInterval
+    ) -> Bool {
+        // Thresholds for acceptable glucose range
+        let lowerThreshold: Double = 72.0  // 4.0 mmol/L in mg/dL
+        let upperThreshold: Double = 198.0 // 11.0 mmol/L in mg/dL
+
+        // Sort samples by date
+        let sortedSamples = glucoseSamples.sorted { $0.startDate < $1.startDate }
+
+        guard let firstSample = sortedSamples.first else {
+            return false
+        }
+
+        // Track the longest continuous period within range
+        var longestInRangeDuration: TimeInterval = 0
+        var currentInRangeStart: Date? = nil
+
+        for sample in sortedSamples {
+            let glucoseValue = sample.quantity.doubleValue(for: .milligramsPerDeciliter)
+
+            // Check if glucose is within range
+            if glucoseValue >= lowerThreshold && glucoseValue <= upperThreshold {
+                // Start tracking if not already
+                if currentInRangeStart == nil {
+                    currentInRangeStart = sample.startDate
+                }
+            } else {
+                // Out of range - check if we had a valid period
+                if let inRangeStart = currentInRangeStart {
+                    let duration = sample.startDate.timeIntervalSince(inRangeStart)
+                    longestInRangeDuration = max(longestInRangeDuration, duration)
+                    currentInRangeStart = nil
+                }
+            }
+        }
+
+        // Check final period if we ended in range
+        if let inRangeStart = currentInRangeStart {
+            let duration = measurementEnd.timeIntervalSince(inRangeStart)
+            longestInRangeDuration = max(longestInRangeDuration, duration)
+        }
+
+        return longestInRangeDuration >= minimumDuration
     }
 
     private func generateRecommendations(

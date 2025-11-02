@@ -36,6 +36,25 @@ public final class LoopCompletionHUDView: BaseHUDView {
         }
     }
 
+    public var loopMode: LoopMode = .open {
+        didSet {
+            updateLoopState()
+        }
+    }
+
+    private func updateLoopState() {
+        switch loopMode {
+        case .open:
+            loopStateView.open = true
+        case .closed:
+            loopStateView.open = false
+        case .calibration:
+            loopStateView.open = false
+        }
+        // Update tint color based on mode
+        updateTintColor()
+    }
+
     public var lastLoopCompleted: Date? {
         didSet {
             if lastLoopCompleted != oldValue {
@@ -73,13 +92,18 @@ public final class LoopCompletionHUDView: BaseHUDView {
     private func updateTintColor() {
         let tintColor: UIColor?
 
-        switch freshness {
-        case .fresh:
-            tintColor = stateColors?.normal
-        case .aging:
-            tintColor = stateColors?.warning
-        case .stale:
-            tintColor = stateColors?.error
+        // For calibration mode, use blue regardless of freshness
+        if loopMode == .calibration {
+            tintColor = UIColor.systemBlue
+        } else {
+            switch freshness {
+            case .fresh:
+                tintColor = stateColors?.normal
+            case .aging:
+                tintColor = stateColors?.warning
+            case .stale:
+                tintColor = stateColors?.error
+            }
         }
 
         self.tintColor = tintColor
@@ -189,10 +213,13 @@ public final class LoopCompletionHUDView: BaseHUDView {
             accessibilityLabel = LocalizedString("Waiting for first run", comment: "Accessibility label describing completion HUD waiting for first run")
         }
 
-        if loopIconClosed {
-            accessibilityHint = LocalizedString("Closed loop", comment: "Accessibility hint describing completion HUD for a closed loop")
-        } else {
+        switch loopMode {
+        case .open:
             accessibilityHint = LocalizedString("Open loop", comment: "Accessbility hint describing completion HUD for an open loop")
+        case .closed:
+            accessibilityHint = LocalizedString("Closed loop", comment: "Accessibility hint describing completion HUD for a closed loop")
+        case .calibration:
+            accessibilityHint = LocalizedString("Calibration loop", comment: "Accessibility hint describing completion HUD for a calibration loop")
         }
     }
 
@@ -207,13 +234,17 @@ extension LoopCompletionHUDView {
     public var loopCompletionMessage: (title: String, message: String) {
         switch freshness {
         case .fresh:
-            if loopStateView.open {
+            switch loopMode {
+            case .open:
                 let reason = closedLoopDisallowedLocalizedDescription ?? LocalizedString("Tap Settings to toggle Closed Loop ON if you wish for the app to automate your insulin.", comment: "Instructions for user to close loop if it is allowed.")
-                return (title: LocalizedString("Closed Loop OFF", comment: "Title of green open loop OFF message"),
-                        message: String(format: LocalizedString("\n%1$@ is operating with Closed Loop in the OFF position. Your pump and CGM will continue operating, but the app will not adjust dosing automatically.\n\n%2$@", comment: "Green closed loop OFF message (1: app name)(2: reason for open loop)"), Bundle.main.bundleDisplayName, reason))
-            } else {
-                return (title: LocalizedString("Closed Loop ON", comment: "Title of green closed loop ON message"),
-                        message: String(format: LocalizedString("\n%1$@\n\n%2$@ is operating with Closed Loop in the ON position.", comment: "Green closed loop ON message (1: last loop string) (2: app name)"), lastLoopMessage, Bundle.main.bundleDisplayName))
+                return (title: LocalizedString("Open Loop", comment: "Title of green open loop message"),
+                        message: String(format: LocalizedString("\n%1$@ is operating in Open Loop mode. Your pump and CGM will continue operating, but the app will not adjust dosing automatically.\n\n%2$@", comment: "Green open loop message (1: app name)(2: reason for open loop)"), Bundle.main.bundleDisplayName, reason))
+            case .closed:
+                return (title: LocalizedString("Closed Loop", comment: "Title of green closed loop message"),
+                        message: String(format: LocalizedString("\n%1$@\n\n%2$@ is operating in Closed Loop mode.", comment: "Green closed loop message (1: last loop string) (2: app name)"), lastLoopMessage, Bundle.main.bundleDisplayName))
+            case .calibration:
+                return (title: LocalizedString("Calibration Loop", comment: "Title of blue calibration loop message"),
+                        message: String(format: LocalizedString("\n%1$@\n\n%2$@ is operating in Calibration Loop mode. Automatic dosing is enabled when glucose is outside the 4.0-11.0 mmol/L range.", comment: "Blue calibration loop message (1: last loop string) (2: app name)"), lastLoopMessage, Bundle.main.bundleDisplayName))
             }
         case .aging:
             return (title: LocalizedString("Loop Warning", comment: "Title of yellow loop message"),

@@ -50,7 +50,6 @@ class SettingsManager {
         if let storedSettings = settingsStore.latestSettings {
             latestSettings = storedSettings
         } else {
-            log.default("SettingsStore has no latestSettings: initializing empty StoredSettings.")
             latestSettings = StoredSettings()
         }
 
@@ -74,7 +73,9 @@ class SettingsManager {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] note in
                 let context = note.userInfo?[LoopDataManager.LoopUpdateContextKey] as! LoopDataManager.LoopUpdateContext.RawValue
-                if case .preferences = LoopDataManager.LoopUpdateContext(rawValue: context), let loopDataManager = note.object as? LoopDataManager {
+                let updateContext = LoopDataManager.LoopUpdateContext(rawValue: context)
+
+                if case .preferences = updateContext, let loopDataManager = note.object as? LoopDataManager {
                     self?.storeSettings(newLoopSettings: loopDataManager.settings)
                 }
             }
@@ -94,7 +95,7 @@ class SettingsManager {
 
     var loopSettings: LoopSettings {
         get {
-            return LoopSettings(
+            var settings = LoopSettings(
                 dosingEnabled: latestSettings.dosingEnabled,
                 glucoseTargetRangeSchedule: latestSettings.glucoseTargetRangeSchedule,
                 insulinSensitivitySchedule: latestSettings.insulinSensitivitySchedule,
@@ -110,6 +111,16 @@ class SettingsManager {
                 suspendThreshold: latestSettings.suspendThreshold,
                 automaticDosingStrategy: latestSettings.automaticDosingStrategy,
                 defaultRapidActingModel: latestSettings.defaultRapidActingModel?.presetForRapidActingInsulin)
+
+            // Restore loopMode from raw value if available, otherwise derive from dosingEnabled
+            if let rawValue = latestSettings.loopModeRawValue, let loopMode = LoopMode(rawValue: rawValue) {
+                settings.loopMode = loopMode
+            } else {
+                let derivedMode: LoopMode = latestSettings.dosingEnabled ? .closed : .open
+                settings.loopMode = derivedMode
+            }
+
+            return settings
         }
     }
 
@@ -118,8 +129,11 @@ class SettingsManager {
         let newLoopSettings = newLoopSettings ?? loopSettings
         let newNotificationSettings = notificationSettings ?? settingsStore.latestSettings?.notificationSettings
 
+        let loopModeRaw = newLoopSettings.loopMode.rawValue
+
         return StoredSettings(date: Date(),
                               dosingEnabled: newLoopSettings.dosingEnabled,
+                              loopModeRawValue: loopModeRaw,
                               glucoseTargetRangeSchedule: newLoopSettings.glucoseTargetRangeSchedule,
                               preMealTargetRange: newLoopSettings.preMealTargetRange,
                               workoutTargetRange: newLoopSettings.legacyWorkoutTargetRange,
@@ -144,7 +158,6 @@ class SettingsManager {
     }
 
     func storeSettings(newLoopSettings: LoopSettings? = nil, notificationSettings: NotificationSettings? = nil) {
-
         var deviceTokenStr: String?
 
         if case .success(let deviceToken) = remoteNotificationRegistrationResult {
@@ -154,14 +167,12 @@ class SettingsManager {
         let mergedSettings = mergeSettings(newLoopSettings: newLoopSettings, notificationSettings: notificationSettings, deviceToken: deviceTokenStr)
 
         if latestSettings == mergedSettings {
-            // Skipping unchanged settings store
             return
         }
 
         latestSettings = mergedSettings
 
         if remoteNotificationRegistrationResult == nil && FeatureFlags.remoteCommandsEnabled {
-            // remote notification registration not finished
             return
         }
 

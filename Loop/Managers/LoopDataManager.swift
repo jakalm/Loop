@@ -126,6 +126,7 @@ final class LoopDataManager {
         self.lockedPumpInsulinType = Locked(pumpInsulinType)
 
         self.automaticDosingStatus = automaticDosingStatus
+        self.automaticDosingStatus.loopMode = settings.loopMode
 
         self.trustedTimeOffset = trustedTimeOffset
 
@@ -209,19 +210,21 @@ final class LoopDataManager {
             }
         ]
 
-        // Turn off preMeal when going into closed loop off mode
-        // Cancel any active temp basal when going into closed loop off mode
+        // Turn off preMeal when going into open loop mode
+        // Cancel any active temp basal when going into open loop mode
         // The dispatch is necessary in case this is coming from a didSet already on the settings struct.
-        self.automaticDosingStatus.$automaticDosingEnabled
+        self.automaticDosingStatus.$loopMode
             .removeDuplicates()
             .dropFirst()
             .receive(on: DispatchQueue.main)
-            .sink { if !$0 {
-                self.mutateSettings { settings in
-                    settings.clearOverride(matching: .preMeal)
+            .sink { mode in
+                if mode == .open {
+                    self.mutateSettings { settings in
+                        settings.clearOverride(matching: .preMeal)
+                    }
+                    self.cancelActiveTempBasal(for: .automaticDosingDisabled)
                 }
-                self.cancelActiveTempBasal(for: .automaticDosingDisabled)
-            } }
+            }
             .store(in: &cancellables)
     }
 
@@ -247,6 +250,7 @@ final class LoopDataManager {
         var invalidateCachedEffects = false
 
         dosingEnabled = newValue.dosingEnabled
+        automaticDosingStatus.loopMode = newValue.loopMode
 
         if newValue.preMealOverride != oldValue.preMealOverride {
             // The prediction isn't actually invalid, but a target range change requires recomputing recommended doses
@@ -894,10 +898,24 @@ extension LoopDataManager {
 
             var (dosingDecision, error) = self.update(for: .loop)
 
+            // Update current glucose value for calibration mode decisions
+            if let latestGlucose = self.glucoseStore.latestGlucose {
+                self.automaticDosingStatus.currentGlucoseValue = latestGlucose.quantity.doubleValue(for: .milligramsPerDeciliter)
+            } else {
+                self.automaticDosingStatus.currentGlucoseValue = nil
+            }
+
             if error == nil, self.automaticDosingStatus.automaticDosingEnabled == true {
                 error = self.enactRecommendedAutomaticDose()
+                if self.automaticDosingStatus.loopMode == .calibration {
+                    self.logger.default("Calibration loop: automatic dosing enabled (glucose out of range)")
+                }
             } else {
-                self.logger.default("Not adjusting dosing during open loop.")
+                if self.automaticDosingStatus.loopMode == .calibration {
+                    self.logger.default("Calibration loop: manual dosing (glucose in safe range)")
+                } else {
+                    self.logger.default("Not adjusting dosing during open loop.")
+                }
             }
 
             self.finishLoop(startDate: startDate, dosingDecision: dosingDecision, error: error)

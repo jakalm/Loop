@@ -8,6 +8,7 @@
 
 import LoopKit
 import LoopKitUI
+import LoopCore
 import MockKit
 import SwiftUI
 import HealthKit
@@ -219,20 +220,43 @@ extension SettingsView {
     }
     
     private var loopSection: some View {
-        Section(header: SectionHeader(label: localizedAppNameAndVersion)) {
-            Toggle(isOn: closedLoopToggleState) {
-                VStack(alignment: .leading) {
-                    Text("Closed Loop", comment: "The title text for the looping enabled switch cell")
-                        .padding(.vertical, 3)
-                    if !viewModel.isOnboardingComplete {
-                        DescriptiveText(label: NSLocalizedString("Closed Loop requires Setup to be Complete", comment: "The description text for the looping enabled switch cell when onboarding is not complete"))
-                    } else if let closedLoopDescriptiveText = viewModel.closedLoopDescriptiveText {
-                        DescriptiveText(label: closedLoopDescriptiveText)
+        let isPickerEnabled = viewModel.isOnboardingComplete && viewModel.isClosedLoopAllowed
+
+        return Section(header: SectionHeader(label: localizedAppNameAndVersion)) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Loop Mode", comment: "The title text for the loop mode picker")
+                    .font(.headline)
+
+                Picker("Loop Mode", selection: Binding(
+                    get: {
+                        return viewModel.loopMode
+                    },
+                    set: { newValue in
+                        viewModel.loopMode = newValue
+                        viewModel.loopModeDidChange(newValue)
+                    }
+                )) {
+                    ForEach(LoopMode.allCases, id: \.self) { mode in
+                        Text(mode.localizedTitle).tag(mode)
                     }
                 }
-                .fixedSize(horizontal: false, vertical: true)
+                .pickerStyle(SegmentedPickerStyle())
+                .disabled(!isPickerEnabled)
+
+                // Show mode description
+                Text(viewModel.loopMode.localizedDescription)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // Show warnings if applicable
+                if !viewModel.isOnboardingComplete {
+                    DescriptiveText(label: NSLocalizedString("Loop modes require Setup to be Complete", comment: "The description text for the loop mode picker when onboarding is not complete"))
+                } else if let closedLoopDescriptiveText = viewModel.closedLoopDescriptiveText {
+                    DescriptiveText(label: closedLoopDescriptiveText)
+                }
             }
-            .disabled(!viewModel.isOnboardingComplete || !viewModel.isClosedLoopAllowed)
+            .padding(.vertical, 3)
         }
     }
     

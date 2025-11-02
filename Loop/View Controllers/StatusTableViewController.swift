@@ -118,9 +118,12 @@ final class StatusTableViewController: LoopChartsTableViewController {
             },
         ]
 
-        automaticDosingStatus.$automaticDosingEnabled
+        automaticDosingStatus.$loopMode
             .receive(on: DispatchQueue.main)
-            .sink { self.automaticDosingStatusChanged($0) }
+            .sink { [weak self] mode in
+                guard let self = self else { return }
+                self.automaticDosingStatusChanged(mode)
+            }
             .store(in: &cancellables)
 
         alertMuter.$configuration
@@ -1630,6 +1633,7 @@ final class StatusTableViewController: LoopChartsTableViewController {
                                           therapySettings: { [weak self] in self?.deviceManager.loopManager.therapySettings ?? TherapySettings() },
                                           sensitivityOverridesEnabled: FeatureFlags.sensitivityOverridesEnabled,
                                           initialDosingEnabled: deviceManager.loopManager.settings.dosingEnabled,
+                                          initialLoopMode: deviceManager.loopManager.settings.loopMode,
                                           isClosedLoopAllowed: automaticDosingStatus.$isAutomaticDosingAllowed,
                                           automaticDosingStrategy: deviceManager.loopManager.settings.automaticDosingStrategy,
                                           availableSupports: supportManager.availableSupports,
@@ -1679,8 +1683,10 @@ final class StatusTableViewController: LoopChartsTableViewController {
         show(settings, sender: self)
     }
 
-    private func automaticDosingStatusChanged(_ automaticDosingEnabled: Bool) {
+    private func automaticDosingStatusChanged(_ loopMode: LoopMode) {
+        let automaticDosingEnabled = (loopMode == .closed || loopMode == .calibration)
         updatePresetModeAvailability(automaticDosingEnabled: automaticDosingEnabled)
+        hudView?.loopCompletionHUD.loopMode = loopMode
         hudView?.loopCompletionHUD.loopIconClosed = automaticDosingEnabled
         hudView?.loopCompletionHUD.closedLoopDisallowedLocalizedDescription = deviceManager.closedLoopDisallowedLocalizedDescription
     }
@@ -2227,7 +2233,16 @@ extension StatusTableViewController: SettingsViewModelDelegate {
             settings.dosingEnabled = value
         }
     }
-    
+
+    func loopModeChanged(_ mode: LoopMode) {
+        log.default("loopModeChanged called with mode: %{public}@", String(describing: mode))
+        deviceManager.loopManager.mutateSettings { settings in
+            self.log.default("Inside mutateSettings, changing from %{public}@ to %{public}@", String(describing: settings.loopMode), String(describing: mode))
+            settings.loopMode = mode
+        }
+        log.default("mutateSettings completed")
+    }
+
     func dosingStrategyChanged(_ strategy: AutomaticDosingStrategy) {
         self.deviceManager.loopManager.mutateSettings { settings in
             settings.automaticDosingStrategy = strategy

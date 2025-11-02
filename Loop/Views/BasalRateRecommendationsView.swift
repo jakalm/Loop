@@ -70,9 +70,9 @@ public struct BasalRateRecommendationsView: View {
                         .foregroundColor(.secondary)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        bulletPoint("No carbs active for 3+ hours before")
-                        bulletPoint("No boluses or temp basals during measurement")
-                        bulletPoint("Stable measurement period of 3+ hours")
+                        bulletPoint("No active carbs during measurement period")
+                        bulletPoint("No active insulin during measurement period")
+                        bulletPoint("Glucose within 4.0-11.0 mmol/L for 3+ hours")
                         bulletPoint("Sufficient glucose readings available")
                     }
                     .font(.caption)
@@ -100,7 +100,7 @@ public struct BasalRateRecommendationsView: View {
                         Text("No recommendations available")
                             .font(.headline)
 
-                        Text("Not enough qualifying data periods found. Try again after collecting more data with stable basals and no carbs.")
+                        Text("Not enough qualifying data periods found. Try again after collecting more data with stable basals, no active carbs/insulin, and glucose in range.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)

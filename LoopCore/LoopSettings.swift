@@ -24,8 +24,14 @@ public struct LoopSettings: Equatable {
         guard let scheduleOverride = scheduleOverride else { return false }
         return scheduleOverride.context == .legacyWorkout && scheduleOverride.duration.isInfinite
     }
-    
-    public var dosingEnabled = false
+
+    public var loopMode: LoopMode = .open
+
+    /// Legacy property for backward compatibility
+    public var dosingEnabled: Bool {
+        get { loopMode == .closed || loopMode == .calibration }
+        set { loopMode = newValue ? .closed : .open }
+    }
 
     public var glucoseTargetRangeSchedule: GlucoseRangeSchedule?
 
@@ -226,7 +232,12 @@ extension LoopSettings: RawRepresentable {
             return nil
         }
 
-        if let dosingEnabled = rawValue["dosingEnabled"] as? Bool {
+        // Load loopMode if available (new format)
+        if let loopModeRawValue = rawValue["loopMode"] as? Int,
+           let loopMode = LoopMode(rawValue: loopModeRawValue) {
+            self.loopMode = loopMode
+        } else if let dosingEnabled = rawValue["dosingEnabled"] as? Bool {
+            // Fallback to legacy dosingEnabled for backward compatibility
             self.dosingEnabled = dosingEnabled
         }
 
@@ -282,7 +293,8 @@ extension LoopSettings: RawRepresentable {
     public var rawValue: RawValue {
         var raw: RawValue = [
             "version": LoopSettings.version,
-            "dosingEnabled": dosingEnabled,
+            "loopMode": loopMode.rawValue,
+            "dosingEnabled": dosingEnabled,  // Keep for backward compatibility
             "overridePresets": overridePresets.map { $0.rawValue }
         ]
 
