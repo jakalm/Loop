@@ -110,14 +110,63 @@ struct PeriodDetailView: View {
                     ProgressView("Loading period data...")
                         .padding()
                 } else {
+                    // Insulin Absorption Summary
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Insulin Absorption Analysis")
+                            .font(.headline)
+
+                        HStack(spacing: 20) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Total Absorbed")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(String(format: "%.2f U", detailViewModel.totalAbsorbedInsulin))
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Absorption Rate")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(String(format: "%.2f U/hr", detailViewModel.averageInsulinPerHour))
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.blue)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Duration")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(formatDuration(window.duration))
+                                    .font(.title3)
+                                    .fontWeight(.medium)
+                            }
+                        }
+
+                        Text("Includes basal, temp basal, and absorbed bolus insulin during the measurement period")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+
                     // Glucose Chart
                     if !detailViewModel.glucoseSamples.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Blood Glucose")
                                 .font(.headline)
 
-                            LoopChartView(chartManager: detailViewModel.chartsManager, chartIndex: StatusChartsManager.ChartIndex.glucose.rawValue)
-                                .frame(height: 200)
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: StatusChartsManager.ChartIndex.glucose.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 200)
                         }
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
@@ -131,8 +180,12 @@ struct PeriodDetailView: View {
                             Text("Active Insulin (IOB)")
                                 .font(.headline)
 
-                            LoopChartView(chartManager: detailViewModel.chartsManager, chartIndex: StatusChartsManager.ChartIndex.iob.rawValue)
-                                .frame(height: 100)
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: StatusChartsManager.ChartIndex.iob.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 100)
                         }
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
@@ -146,8 +199,12 @@ struct PeriodDetailView: View {
                             Text("Basal Insulin Rate")
                                 .font(.headline)
 
-                            BasalRateChartView(basalDoses: detailViewModel.basalDoses, period: detailViewModel.displayPeriod)
-                                .frame(height: 100)
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: PeriodDetailChartsManager.ChartIndex.basalRate.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 100)
                         }
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
@@ -161,8 +218,12 @@ struct PeriodDetailView: View {
                             Text("Insulin Doses")
                                 .font(.headline)
 
-                            LoopChartView(chartManager: detailViewModel.chartsManager, chartIndex: StatusChartsManager.ChartIndex.dose.rawValue)
-                                .frame(height: 100)
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: StatusChartsManager.ChartIndex.dose.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 100)
                         }
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
@@ -176,8 +237,12 @@ struct PeriodDetailView: View {
                             Text("Active Carbs (COB)")
                                 .font(.headline)
 
-                            LoopChartView(chartManager: detailViewModel.chartsManager, chartIndex: StatusChartsManager.ChartIndex.cob.rawValue)
-                                .frame(height: 100)
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: StatusChartsManager.ChartIndex.cob.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 100)
                         }
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
@@ -221,6 +286,12 @@ struct PeriodDetailView: View {
         formatter.timeStyle = .short
         return "\(formatter.string(from: start)) - \(formatter.string(from: end))"
     }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration / 3600)
+        let minutes = Int((duration.truncatingRemainder(dividingBy: 3600)) / 60)
+        return "\(hours)h \(minutes)m"
+    }
 }
 
 // MARK: - View Model
@@ -233,6 +304,8 @@ class PeriodDetailViewModel: ObservableObject {
     @Published var iobValues: [InsulinValue] = []
     @Published var cobValues: [CarbValue] = []
     @Published var isLoading = false
+    @Published var totalAbsorbedInsulin: Double = 0
+    @Published var averageInsulinPerHour: Double = 0
 
     private let window: BasalAnalysisWindow
     private let glucoseStore: GlucoseStoreProtocol
@@ -244,6 +317,10 @@ class PeriodDetailViewModel: ObservableObject {
         let extendedStart = window.measurementStart.addingTimeInterval(-3 * .hours(1))
         let extendedEnd = window.measurementEnd.addingTimeInterval(3 * .hours(1))
         return (extendedStart, extendedEnd)
+    }
+
+    var measurementPeriod: (start: Date, end: Date) {
+        return (window.measurementStart, window.measurementEnd)
     }
 
     // Chart managers
@@ -343,8 +420,83 @@ class PeriodDetailViewModel: ObservableObject {
 
         group.notify(queue: .main) {
             self.isLoading = false
+            self.calculateInsulinAbsorption()
             self.updateCharts()
         }
+    }
+
+    private func calculateInsulinAbsorption() {
+        let insulinActionDuration: TimeInterval = 6 * .hours(1)
+        var totalAbsorbed: Double = 0
+
+        // Look back to include any insulin doses that could still be absorbing during the period
+        let lookbackStart = window.measurementStart.addingTimeInterval(-insulinActionDuration)
+
+        // Get all doses that could affect the measurement period
+        let allDoses = insulinDoses + basalDoses
+
+        let relevantDoses = allDoses.filter { dose in
+            dose.endDate > lookbackStart && dose.startDate < window.measurementEnd
+        }
+
+        for dose in relevantDoses {
+            switch dose.type {
+            case .bolus:
+                // Calculate how much of the bolus was absorbed during the period
+                let bolusAbsorbed = calculateBolusAbsorption(
+                    bolusAmount: dose.programmedUnits,
+                    bolusTime: dose.startDate,
+                    periodStart: window.measurementStart,
+                    periodEnd: window.measurementEnd,
+                    insulinActionDuration: insulinActionDuration
+                )
+                totalAbsorbed += bolusAbsorbed
+
+            case .basal, .tempBasal:
+                // Calculate basal/temp basal delivered during the period
+                let overlapStart = max(dose.startDate, window.measurementStart)
+                let overlapEnd = min(dose.endDate, window.measurementEnd)
+
+                if overlapStart < overlapEnd {
+                    let overlapDuration = overlapEnd.timeIntervalSince(overlapStart) / .hours(1)
+                    let insulinDelivered = dose.unitsPerHour * overlapDuration
+                    totalAbsorbed += insulinDelivered
+                }
+
+            case .suspend, .resume:
+                // No insulin
+                break
+            }
+        }
+
+        let durationHours = window.duration / .hours(1)
+        self.totalAbsorbedInsulin = totalAbsorbed
+        self.averageInsulinPerHour = durationHours > 0 ? totalAbsorbed / durationHours : 0
+    }
+
+    private func calculateBolusAbsorption(
+        bolusAmount: Double,
+        bolusTime: Date,
+        periodStart: Date,
+        periodEnd: Date,
+        insulinActionDuration: TimeInterval
+    ) -> Double {
+        let bolusEnd = bolusTime.addingTimeInterval(insulinActionDuration)
+
+        // If bolus is completely before period or completely after, no absorption
+        guard bolusTime < periodEnd && bolusEnd > periodStart else {
+            return 0
+        }
+
+        // Calculate what fraction of the bolus absorption happened during the period
+        let absorptionStart = max(bolusTime, periodStart)
+        let absorptionEnd = min(bolusEnd, periodEnd)
+        let periodAbsorptionDuration = absorptionEnd.timeIntervalSince(absorptionStart)
+
+        // Linear absorption model: insulin absorbs evenly over the action duration
+        let fractionAbsorbed = periodAbsorptionDuration / insulinActionDuration
+
+        return bolusAmount * fractionAbsorbed
     }
 
     private func updateCharts() {
@@ -378,6 +530,11 @@ class PeriodDetailViewModel: ObservableObject {
         if !cobValues.isEmpty {
             chartsManager.setCOBValues(cobValues)
         }
+
+        // Update basal rate chart - only if we have data
+        if !basalDoses.isEmpty {
+            chartsManager.setBasalDoses(basalDoses)
+        }
     }
 }
 
@@ -389,12 +546,14 @@ class PeriodDetailChartsManager: ChartsManager {
         case iob
         case dose
         case cob
+        case basalRate
     }
 
     let glucose: PredictedGlucoseChart
     let iob: IOBChart
     let dose: DoseChart
     let cob: COBChart
+    let basalRate: BasalRateChart
 
     init(colors: ChartColorPalette, settings: ChartSettings, traitCollection: UITraitCollection) {
         let glucose = PredictedGlucoseChart(predictedGlucoseBounds: FeatureFlags.predictedGlucoseChartClampEnabled ? .default : nil,
@@ -402,10 +561,12 @@ class PeriodDetailChartsManager: ChartsManager {
         let iob = IOBChart()
         let dose = DoseChart()
         let cob = COBChart()
+        let basalRate = BasalRateChart()
         self.glucose = glucose
         self.iob = iob
         self.dose = dose
         self.cob = cob
+        self.basalRate = basalRate
 
         // Create custom time formatter that shows just the hour
         let hourFormatter = DateFormatter()
@@ -421,6 +582,8 @@ class PeriodDetailChartsManager: ChartsManager {
                 return dose
             case .cob:
                 return cob
+            case .basalRate:
+                return basalRate
             }
         }), traitCollection: traitCollection, customTimeFormatter: hourFormatter)
     }
@@ -446,159 +609,10 @@ extension PeriodDetailChartsManager {
         cob.setCOBValues(cobValues)
         invalidateChart(atIndex: ChartIndex.cob.rawValue)
     }
-}
 
-// MARK: - Basal Rate Chart View
-
-struct BasalRateChartView: View {
-    let basalDoses: [DoseEntry]
-    let period: (start: Date, end: Date)
-
-    var body: some View {
-        HStack(spacing: 0) {
-            // Y-axis labels
-            VStack(alignment: .trailing, spacing: 0) {
-                ForEach(0..<6) { i in
-                    if let maxRate = getMaxRate() {
-                        let rate = maxRate * 1.2 * (1.0 - Double(i) / 5.0)
-                        Text(String(format: "%.2f", rate))
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .frame(height: 20, alignment: .center)
-                        if i < 5 {
-                            Spacer()
-                        }
-                    }
-                }
-            }
-            .frame(width: 40)
-            .padding(.trailing, 4)
-
-            VStack(spacing: 0) {
-                // Chart area
-                GeometryReader { geometry in
-                    if let chartData = createChartData() {
-                        Canvas { context, size in
-                            // Draw grid lines
-                            let gridColor = Color.gray.opacity(0.2)
-                            for i in 0...5 {
-                                let y = CGFloat(i) * (size.height / 5)
-                                context.stroke(
-                                    Path { path in
-                                        path.move(to: CGPoint(x: 0, y: y))
-                                        path.addLine(to: CGPoint(x: size.width, y: y))
-                                    },
-                                    with: .color(gridColor),
-                                    lineWidth: 0.5
-                                )
-                            }
-
-                            // Draw basal rate line
-                            let path = Path { path in
-                                for (index, point) in chartData.enumerated() {
-                                    let x = point.x * size.width
-                                    let y = size.height - (point.y * size.height)
-
-                                    if index == 0 {
-                                        path.move(to: CGPoint(x: x, y: y))
-                                    } else {
-                                        path.addLine(to: CGPoint(x: x, y: y))
-                                    }
-                                }
-                            }
-
-                            context.stroke(
-                                path,
-                                with: .color(.blue),
-                                lineWidth: 2
-                            )
-
-                            // Fill area under line
-                            let fillPath = Path { path in
-                                for (index, point) in chartData.enumerated() {
-                                    let x = point.x * size.width
-                                    let y = size.height - (point.y * size.height)
-
-                                    if index == 0 {
-                                        path.move(to: CGPoint(x: x, y: size.height))
-                                        path.addLine(to: CGPoint(x: x, y: y))
-                                    } else {
-                                        path.addLine(to: CGPoint(x: x, y: y))
-                                    }
-                                }
-                                if let last = chartData.last {
-                                    path.addLine(to: CGPoint(x: last.x * size.width, y: size.height))
-                                }
-                                path.closeSubpath()
-                            }
-
-                            context.fill(
-                                fillPath,
-                                with: .color(.blue.opacity(0.2))
-                            )
-                        }
-                    } else {
-                        Text("No basal data")
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                    }
-                }
-
-                // X-axis labels
-                HStack(spacing: 0) {
-                    ForEach(0..<7) { i in
-                        let fraction = Double(i) / 6.0
-                        let time = period.start.addingTimeInterval(period.end.timeIntervalSince(period.start) * fraction)
-                        Text(formatTime(time))
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.top, 4)
-            }
-        }
-    }
-
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH"
-        return formatter.string(from: date)
-    }
-
-    private func getMaxRate() -> Double? {
-        return basalDoses.map { $0.unitsPerHour }.max()
-    }
-
-    private func createChartData() -> [(x: CGFloat, y: CGFloat)]? {
-        guard !basalDoses.isEmpty else { return nil }
-
-        // Get max rate for scaling
-        let maxRate = basalDoses.map { $0.unitsPerHour }.max() ?? 1.0
-        let scaledMaxRate = maxRate * 1.2 // Add 20% padding
-
-        let totalDuration = period.end.timeIntervalSince(period.start)
-
-        var points: [(x: CGFloat, y: CGFloat)] = []
-
-        // Create points for each basal segment
-        for dose in basalDoses.sorted(by: { $0.startDate < $1.startDate }) {
-            let startX = max(0, dose.startDate.timeIntervalSince(period.start) / totalDuration)
-            let endX = min(1, dose.endDate.timeIntervalSince(period.start) / totalDuration)
-
-            // Skip if dose is completely outside period
-            guard endX > 0 && startX < 1 else { continue }
-
-            let rate = dose.type == .suspend ? 0 : dose.unitsPerHour
-            let y = CGFloat(rate / scaledMaxRate)
-
-            // Add start point
-            points.append((x: CGFloat(startX), y: y))
-            // Add end point
-            points.append((x: CGFloat(endX), y: y))
-        }
-
-        return points.isEmpty ? nil : points
+    func setBasalDoses(_ basalDoses: [DoseEntry]) {
+        basalRate.setBasalDoses(basalDoses)
+        invalidateChart(atIndex: ChartIndex.basalRate.rawValue)
     }
 }
 
@@ -607,6 +621,7 @@ struct BasalRateChartView: View {
 struct LoopChartView: UIViewRepresentable {
     let chartManager: ChartsManager
     let chartIndex: Int
+    var measurementPeriod: (start: Date, end: Date)? = nil
 
     func makeUIView(context: Context) -> ChartContainerView {
         let view = ChartContainerView()
@@ -617,6 +632,7 @@ struct LoopChartView: UIViewRepresentable {
     }
 
     func updateUIView(_ chartContainerView: ChartContainerView, context: Context) {
+        chartManager.highlightedTimeRange = measurementPeriod
         chartManager.invalidateChart(atIndex: chartIndex)
         chartManager.prerender()
         chartContainerView.reloadChart()

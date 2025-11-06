@@ -1899,9 +1899,12 @@ extension LoopDataManager {
             }
 
             // Check for deferred meal boluses and add them if safe to deliver
+            // This check runs independently of whether automatic dosing is currently enabled
+            // to allow delivery in calibration mode when glucose predictions become safe
+            // Only works in closed loop modes (not open loop)
             if UserDefaults.standard.deferredMealBolusEnabled,
-               var doseRec = dosingRecommendation,
-               case .automaticBolus = settings.automaticDosingStrategy
+               case .automaticBolus = settings.automaticDosingStrategy,
+               automaticDosingStatus.loopMode != .open
             {
                 let activeDeferredBoluses = deferredMealBolusStore.getActiveDeferredBoluses(at: startDate)
                 if !activeDeferredBoluses.isEmpty {
@@ -1918,7 +1921,7 @@ extension LoopDataManager {
                         }
 
                         if totalDeferredAmount > 0 {
-                            let currentBolusAmount = doseRec.bolusUnits ?? 0
+                            let currentBolusAmount = dosingRecommendation?.bolusUnits ?? 0
                             let combinedAmount = currentBolusAmount + totalDeferredAmount
 
                             // Respect max bolus limit
@@ -1927,11 +1930,21 @@ extension LoopDataManager {
 
                             if actualDeferredAmount > 0 {
                                 self.logger.default("Adding deferred bolus: %.2f units (%.2f units requested, %.2f IOB headroom)", actualDeferredAmount, totalDeferredAmount, iobHeadroom)
-                                doseRec = AutomaticDoseRecommendation(
-                                    basalAdjustment: doseRec.basalAdjustment,
-                                    bolusUnits: maxAllowed
-                                )
-                                dosingRecommendation = doseRec
+
+                                // Create or update dosing recommendation with deferred bolus
+                                if let existingRec = dosingRecommendation {
+                                    // Add to existing recommendation
+                                    dosingRecommendation = AutomaticDoseRecommendation(
+                                        basalAdjustment: existingRec.basalAdjustment,
+                                        bolusUnits: maxAllowed
+                                    )
+                                } else {
+                                    // Create new recommendation for deferred bolus only
+                                    dosingRecommendation = AutomaticDoseRecommendation(
+                                        basalAdjustment: nil,
+                                        bolusUnits: maxAllowed
+                                    )
+                                }
 
                                 // Record delivery toward deferred boluses
                                 // Distribute the actual delivered amount proportionally across active deferred boluses

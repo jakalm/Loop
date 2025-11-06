@@ -18,12 +18,14 @@ class StatusChartsManager: ChartsManager {
         case iob
         case dose
         case cob
+        case basalRate
     }
 
     let glucose: PredictedGlucoseChart
     let iob: IOBChart
     let dose: DoseChart
     let cob: COBChart
+    let basalRate: BasalRateChart
 
     init(colors: ChartColorPalette, settings: ChartSettings, traitCollection: UITraitCollection) {
         let glucose = PredictedGlucoseChart(predictedGlucoseBounds: FeatureFlags.predictedGlucoseChartClampEnabled ? .default : nil,
@@ -31,10 +33,12 @@ class StatusChartsManager: ChartsManager {
         let iob = IOBChart()
         let dose = DoseChart()
         let cob = COBChart()
+        let basalRate = BasalRateChart()
         self.glucose = glucose
         self.iob = iob
         self.dose = dose
         self.cob = cob
+        self.basalRate = basalRate
 
         super.init(colors: colors, settings: settings, charts: ChartIndex.allCases.map({ (index) -> ChartProviding in
             switch index {
@@ -46,6 +50,8 @@ class StatusChartsManager: ChartsManager {
                 return dose
             case .cob:
                 return cob
+            case .basalRate:
+                return basalRate
             }
         }), traitCollection: traitCollection)
     }
@@ -134,5 +140,16 @@ extension StatusChartsManager {
 
     func cobChart(withFrame frame: CGRect) -> Chart? {
         return chart(atIndex: ChartIndex.cob.rawValue, frame: frame)
+    }
+}
+
+extension StatusChartsManager {
+    func setBasalDoses(_ basalDoses: [DoseEntry]) {
+        basalRate.setBasalDoses(basalDoses)
+        invalidateChart(atIndex: ChartIndex.basalRate.rawValue)
+    }
+
+    func basalRateChart(withFrame frame: CGRect) -> Chart? {
+        return chart(atIndex: ChartIndex.basalRate.rawValue, frame: frame)
     }
 }
