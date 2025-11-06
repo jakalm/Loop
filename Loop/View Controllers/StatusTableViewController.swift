@@ -1649,11 +1649,20 @@ final class StatusTableViewController: LoopChartsTableViewController {
             settings: { [weak self] in self?.deviceManager.loopManager.settings ?? LoopSettings() }
         )
 
+        // Create carb ratio recommendations view model
+        let carbRatioRecommendationsVM = CarbRatioRecommendationsViewModel(
+            glucoseStore: deviceManager.glucoseStore,
+            carbStore: deviceManager.carbStore,
+            doseStore: deviceManager.doseStore,
+            settings: { [weak self] in self?.deviceManager.loopManager.settings ?? LoopSettings() }
+        )
+
         let hostingController = DismissibleHostingController(
             rootView: SettingsView(
                 viewModel: viewModel,
                 localizedAppNameAndVersion: supportManager.localizedAppNameAndVersion,
-                basalRateRecommendationsViewModel: basalRecommendationsVM
+                basalRateRecommendationsViewModel: basalRecommendationsVM,
+                carbRatioRecommendationsViewModel: carbRatioRecommendationsVM
             )
                 .environmentObject(deviceManager.displayGlucosePreference)
                 .environment(\.appName, Bundle.main.bundleDisplayName),

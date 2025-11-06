@@ -26,6 +26,7 @@ public struct SettingsView: View {
     @ObservedObject var versionUpdateViewModel: VersionUpdateViewModel
 
     var basalRateRecommendationsViewModel: BasalRateRecommendationsViewModel?
+    var carbRatioRecommendationsViewModel: CarbRatioRecommendationsViewModel?
 
     enum Destination {
         enum Alert: String, Identifiable {
@@ -63,11 +64,12 @@ public struct SettingsView: View {
     
     var localizedAppNameAndVersion: String
 
-    public init(viewModel: SettingsViewModel, localizedAppNameAndVersion: String, basalRateRecommendationsViewModel: BasalRateRecommendationsViewModel? = nil) {
+    public init(viewModel: SettingsViewModel, localizedAppNameAndVersion: String, basalRateRecommendationsViewModel: BasalRateRecommendationsViewModel? = nil, carbRatioRecommendationsViewModel: CarbRatioRecommendationsViewModel? = nil) {
         self.viewModel = viewModel
         self.versionUpdateViewModel = viewModel.versionUpdateViewModel
         self.localizedAppNameAndVersion = localizedAppNameAndVersion
         self.basalRateRecommendationsViewModel = basalRateRecommendationsViewModel
+        self.carbRatioRecommendationsViewModel = carbRatioRecommendationsViewModel
     }
     
     public var body: some View {
@@ -329,6 +331,16 @@ extension SettingsView {
                                imageView: Image(systemName: "chart.line.uptrend.xyaxis"),
                                label: NSLocalizedString("Basal Rate Recommendations", comment: "Title text for button to Basal Rate Recommendations"),
                                descriptiveText: NSLocalizedString("AI-powered analysis of your insulin needs", comment: "Descriptive text for Basal Rate Recommendations"))
+                }
+            }
+
+            if let carbRatioRecommendationsVM = carbRatioRecommendationsViewModel {
+                NavigationLink(destination: CarbRatioRecommendationsView(viewModel: carbRatioRecommendationsVM)) {
+                    LargeButton(action: { },
+                               includeArrow: true,
+                               imageView: Image(systemName: "fork.knife"),
+                               label: NSLocalizedString("Carb Ratio Recommendations", comment: "Title text for button to Carb Ratio Recommendations"),
+                               descriptiveText: NSLocalizedString("AI-powered analysis of your carb ratios", comment: "Descriptive text for Carb Ratio Recommendations"))
                 }
             }
 

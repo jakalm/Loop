@@ -1194,4 +1194,457 @@ class SettingsRecommendationManager {
 
         return bolusAmount * fractionAbsorbed
     }
+
+    // MARK: - Carb Ratio Recommendations
+
+    /// Generate carb ratio (I:C) recommendations based on meal analysis
+    func generateCarbRatioRecommendations(daysToAnalyze: Int, completion: @escaping ([CarbRatioRecommendation]) -> Void) {
+        let endDate = Date()
+        let startDate = endDate.addingTimeInterval(-TimeInterval(daysToAnalyze) * .hours(24))
+
+        // Fetch all necessary data
+        fetchAnalysisData(from: startDate, to: endDate) { result in
+            switch result {
+            case .success(let data):
+                let mealWindows = self.identifyValidMealWindows(
+                    glucoseSamples: data.glucoseSamples,
+                    carbEntries: data.carbEntries,
+                    doseEntries: data.doseEntries,
+                    from: startDate,
+                    to: endDate
+                )
+
+                let recommendations = self.generateCarbRatioRecommendations(
+                    from: mealWindows,
+                    glucoseSamples: data.glucoseSamples
+                )
+                completion(recommendations)
+
+            case .failure(let error):
+                self.logger.error("Failed to fetch analysis data for carb ratio: \(String(describing: error))")
+                completion([])
+            }
+        }
+    }
+
+    /// Identify valid meal periods for carb ratio analysis
+    private func identifyValidMealWindows(
+        glucoseSamples: [StoredGlucoseSample],
+        carbEntries: [StoredCarbEntry],
+        doseEntries: [DoseEntry],
+        from startDate: Date,
+        to endDate: Date
+    ) -> [CarbRatioAnalysisWindow] {
+        var validWindows: [CarbRatioAnalysisWindow] = []
+
+        // Analyze each carb entry
+        for carbEntry in carbEntries {
+            // Skip if carb entry is outside our analysis window
+            guard carbEntry.startDate >= startDate && carbEntry.startDate <= endDate else { continue }
+
+            // Try to create a valid analysis window for this meal
+            if let window = analyzeMealPeriod(
+                carbEntry: carbEntry,
+                glucoseSamples: glucoseSamples,
+                carbEntries: carbEntries,
+                doseEntries: doseEntries
+            ) {
+                validWindows.append(window)
+            }
+        }
+
+        return validWindows
+    }
+
+    /// Analyze a single meal period to see if it qualifies for carb ratio analysis
+    private func analyzeMealPeriod(
+        carbEntry: StoredCarbEntry,
+        glucoseSamples: [StoredGlucoseSample],
+        carbEntries: [StoredCarbEntry],
+        doseEntries: [DoseEntry]
+    ) -> CarbRatioAnalysisWindow? {
+        let mealTime = carbEntry.startDate
+        let carbAmount = carbEntry.quantity.doubleValue(for: .gram())
+
+        // Need at least 10g carbs for reliable analysis
+        guard carbAmount >= 10.0 else { return nil }
+
+        // Define maximum observation period (up to 8 hours for slow-absorbing carbs)
+        let maxObservationEnd = mealTime.addingTimeInterval(8 * .hours(1))
+
+        // Calculate when COB and IOB both reach near-zero
+        // Use carb absorption time from the entry if available, otherwise estimate
+        let carbAbsorptionTime = carbEntry.absorptionTime ?? TimeInterval(hours: 3)
+        let estimatedCarbEnd = mealTime.addingTimeInterval(carbAbsorptionTime)
+
+        // Insulin action duration (typically 6 hours)
+        let insulinActionDuration: TimeInterval = 6 * .hours(1)
+
+        // Find boluses around meal time to determine when insulin will be absorbed
+        let bolusWindow: TimeInterval = 30 * 60
+        let bolusStart = mealTime.addingTimeInterval(-bolusWindow)
+        let bolusEnd = mealTime.addingTimeInterval(bolusWindow)
+
+        let mealBoluses = doseEntries.filter { dose in
+            dose.type == .bolus &&
+            dose.startDate >= bolusStart &&
+            dose.startDate <= bolusEnd
+        }
+
+        guard !mealBoluses.isEmpty else { return nil }
+
+        // Latest bolus determines when insulin action ends
+        let latestBolusTime = mealBoluses.map { $0.startDate }.max() ?? mealTime
+        let estimatedInsulinEnd = latestBolusTime.addingTimeInterval(insulinActionDuration)
+
+        // Observation ends when both carbs and insulin are absorbed
+        // Use the later of the two, but cap at maximum observation period
+        let observationEnd = min(max(estimatedCarbEnd, estimatedInsulinEnd), maxObservationEnd)
+
+        // Check for minimal active carbs at meal time (< 1g COB)
+        // This ensures we're starting with a clean slate
+        let maxCarbAbsorptionDuration = 8 * .hours(1)
+        var cobAtMealTime: Double = 0
+
+        for otherCarb in carbEntries {
+            guard otherCarb.syncIdentifier != carbEntry.syncIdentifier else { continue }
+
+            let timeSinceCarb = mealTime.timeIntervalSince(otherCarb.startDate)
+
+            // Only consider carbs that could still be active
+            guard timeSinceCarb > 0 && timeSinceCarb < maxCarbAbsorptionDuration else { continue }
+
+            // Estimate remaining carbs using simple linear absorption
+            let carbAmount = otherCarb.quantity.doubleValue(for: .gram())
+            let absorptionTime = otherCarb.absorptionTime ?? TimeInterval(hours: 3)
+            let fractionRemaining = max(0, 1.0 - (timeSinceCarb / absorptionTime))
+            cobAtMealTime += carbAmount * fractionRemaining
+        }
+
+        guard cobAtMealTime < 1.0 else { return nil }
+
+        // Check for no other carb entries during observation (only this single meal)
+        let overlappingCarbs = carbEntries.filter { otherCarb in
+            guard otherCarb.syncIdentifier != carbEntry.syncIdentifier else { return false }
+            return otherCarb.startDate > mealTime && otherCarb.startDate <= observationEnd
+        }
+
+        guard overlappingCarbs.isEmpty else { return nil }
+
+        // Check for no recent lows (<4.0 mmol/L) within 8 hours before
+        let lowGlucoseThreshold: Double = 72.0  // 4.0 mmol/L
+        let lowCheckStart = mealTime.addingTimeInterval(-8 * .hours(1))
+
+        let recentLows = glucoseSamples.filter { sample in
+            sample.startDate >= lowCheckStart &&
+            sample.startDate < mealTime &&
+            sample.quantity.doubleValue(for: .milligramsPerDeciliter) < lowGlucoseThreshold
+        }
+
+        guard recentLows.isEmpty else { return nil }
+
+        // Check for low active insulin at meal time (< 0.5 U)
+        let iob = calculateActiveInsulin(
+            doseEntries: doseEntries,
+            at: mealTime,
+            insulinActionDuration: insulinActionDuration
+        )
+
+        guard abs(iob) < 0.5 else { return nil }
+
+        // Get start glucose for correction calculation
+        guard let startGlucoseSample = glucoseSamples.filter({ $0.startDate >= mealTime && $0.startDate <= mealTime.addingTimeInterval(15 * 60) }).first else {
+            return nil
+        }
+        let startGlucose = startGlucoseSample.quantity.doubleValue(for: .milligramsPerDeciliter)
+
+        // Calculate correction bolus component
+        // If glucose is above target, Loop would have given correction insulin
+        // Use the midpoint of the user's target range
+        let targetRange = settings().glucoseTargetRangeSchedule?.quantityRange(at: mealTime)
+        let targetGlucose: Double
+        if let targetRange = targetRange {
+            let minTarget = targetRange.lowerBound.doubleValue(for: .milligramsPerDeciliter)
+            let maxTarget = targetRange.upperBound.doubleValue(for: .milligramsPerDeciliter)
+            targetGlucose = (minTarget + maxTarget) / 2.0 // Use midpoint of target range
+        } else {
+            targetGlucose = 100.0 // Fallback: 5.5 mmol/L
+        }
+
+        let glucoseDelta = startGlucose - targetGlucose
+        let isf = settings().insulinSensitivitySchedule?.quantity(at: mealTime).doubleValue(for: .milligramsPerDeciliter) ?? 72.0
+        let estimatedCorrectionBolus = max(0, glucoseDelta / isf)
+
+        // Total bolus given at meal time
+        let totalBolus = mealBoluses.reduce(0.0) { $0 + $1.programmedUnits }
+
+        // Separate meal bolus from correction
+        // Meal bolus is what's left after accounting for correction
+        let mealBolus = max(0.1, totalBolus - estimatedCorrectionBolus)
+        let correctionBolus = totalBolus - mealBolus
+
+        // Check for no correction boluses during observation period
+        let observationBoluses = doseEntries.filter { dose in
+            dose.type == .bolus &&
+            dose.startDate > bolusEnd &&
+            dose.startDate <= observationEnd
+        }
+
+        guard observationBoluses.isEmpty else { return nil }
+
+        // Get glucose readings during observation period
+        let observationGlucose = glucoseSamples.filter { sample in
+            sample.startDate >= mealTime && sample.startDate <= observationEnd
+        }
+
+        // Need sufficient glucose data (at least 4 readings, roughly one every hour for 4+ hours)
+        guard observationGlucose.count >= 4 else { return nil }
+
+        // Check that glucose was within 4.0-13.0 mmol/L (72-234 mg/dL) for at least 2 hours
+        if !isGlucoseInRangeForMinimumDuration(
+            glucoseSamples: observationGlucose,
+            measurementStart: mealTime,
+            measurementEnd: observationEnd,
+            minimumDuration: 2 * .hours(1)
+        ) {
+            return nil
+        }
+
+        // Get start and end glucose values
+        guard let startGlucose = glucoseSamples.filter({ $0.startDate >= mealTime && $0.startDate <= mealTime.addingTimeInterval(15 * 60) }).first,
+              let endGlucose = observationGlucose.last else {
+            return nil
+        }
+
+        // Create the valid meal analysis window
+        return CarbRatioAnalysisWindow(
+            carbEntryTime: mealTime,
+            observationEnd: observationEnd,
+            carbEntry: carbEntry,
+            mealBolus: mealBolus,
+            correctionBolus: correctionBolus,
+            startGlucose: startGlucoseSample,
+            endGlucose: endGlucose
+        )
+    }
+
+    /// Generate carb ratio recommendations from valid meal windows
+    private func generateCarbRatioRecommendations(
+        from mealWindows: [CarbRatioAnalysisWindow],
+        glucoseSamples: [StoredGlucoseSample]
+    ) -> [CarbRatioRecommendation] {
+        let calendar = Calendar.current
+        let referenceDate = Date()
+        let dayStart = calendar.startOfDay(for: referenceDate)
+
+        guard !mealWindows.isEmpty else { return [] }
+
+        // Group meals by hour of day
+        var mealsByHour: [Int: [CarbRatioAnalysisWindow]] = [:]
+        for meal in mealWindows {
+            let hour = calendar.component(.hour, from: meal.carbEntryTime)
+            mealsByHour[hour, default: []].append(meal)
+        }
+
+        var recommendations: [CarbRatioRecommendation] = []
+
+        // Create recommendation for each hour that has meals
+        let hoursWithMeals = mealsByHour.keys.sorted()
+        for hour in hoursWithMeals {
+            guard let mealsInHour = mealsByHour[hour], !mealsInHour.isEmpty else {
+                continue
+            }
+
+            // Create hourly segment (e.g., 11:00-11:59)
+            let segmentStart = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: dayStart) ?? dayStart
+            let segmentEnd = calendar.date(bySettingHour: hour, minute: 59, second: 59, of: dayStart) ?? dayStart
+
+            // Calculate recommendation based on meals in this hour
+            let rec = calculateCarbRatioRecommendation(
+                meals: mealsInHour,
+                segmentStart: segmentStart,
+                segmentEnd: segmentEnd
+            )
+            recommendations.append(rec)
+        }
+
+        // Merge consecutive segments with same recommendation
+        return mergeCarbRatioRecommendations(recommendations)
+    }
+
+    /// Calculate carb ratio recommendation for a group of meals
+    private func calculateCarbRatioRecommendation(
+        meals: [CarbRatioAnalysisWindow],
+        segmentStart: Date,
+        segmentEnd: Date
+    ) -> CarbRatioRecommendation {
+        let calendar = Calendar.current
+        let hourOfDay = calendar.component(.hour, from: segmentStart)
+
+        // Get current carb ratio setting
+        let currentRatio = settings().carbRatioSchedule?.value(at: segmentStart) ?? 10.0
+
+        // Analyze each meal to determine optimal ratio
+        var totalWeightedRatio: Double = 0
+        var totalGlucoseChange: Double = 0
+        var totalStartGlucose: Double = 0
+        var totalEndGlucose: Double = 0
+        var totalWeight: Double = 0
+
+        for meal in meals {
+            let carbAmount = meal.carbAmount
+            let mealBolus = meal.mealBolus
+            let glucoseChange = meal.glucoseChange
+
+            // Weight by carb amount (larger meals have more data)
+            let weight = carbAmount
+
+            // Calculate what ratio would have resulted in stable glucose
+            // If glucose rose, need more insulin (lower ratio = more insulin per carb)
+            // If glucose fell, need less insulin (higher ratio = less insulin per carb)
+
+            // Use ISF to estimate how much the insulin affected glucose
+            // Make sure we get ISF in mg/dL units to match glucoseChange
+            let isfSchedule = settings().insulinSensitivitySchedule
+            let isf = isfSchedule?.quantity(at: meal.carbEntryTime).doubleValue(for: .milligramsPerDeciliter) ?? 50.0
+
+            // Account for correction bolus effect on glucose
+            // The correction bolus lowered glucose by: correctionBolus * isf
+            // So the net effect from carbs and meal insulin is:
+            let correctionEffect = meal.correctionBolus * isf
+            let netGlucoseChangeFromMeal = glucoseChange + correctionEffect
+
+            // Now calculate adjustment needed for meal insulin
+            // If netGlucoseChangeFromMeal > 0: meal bolus was too little
+            // If netGlucoseChangeFromMeal < 0: meal bolus was too much
+            let mealInsulinAdjustment = netGlucoseChangeFromMeal / isf
+            let optimalMealInsulin = mealBolus + mealInsulinAdjustment
+
+            // Calculate optimal ratio, with bounds checking
+            var adjustedRatio: Double
+            if optimalMealInsulin > 0.1 {
+                adjustedRatio = carbAmount / optimalMealInsulin
+                // Clamp to reasonable range (1-30 g/U)
+                adjustedRatio = max(1.0, min(30.0, adjustedRatio))
+            } else {
+                // If optimal insulin is near zero or negative, use observed ratio
+                adjustedRatio = meal.observedCarbRatio
+            }
+
+            print("Meal analysis: carbs=\(carbAmount)g, meal insulin=\(mealBolus)U, correction=\(meal.correctionBolus)U, observed ratio=\(meal.observedCarbRatio), glucose change=\(glucoseChange)mg/dL, net change from meal=\(netGlucoseChangeFromMeal)mg/dL, ISF=\(isf), adjustment=\(mealInsulinAdjustment)U, optimal meal insulin=\(optimalMealInsulin)U, adjusted ratio=\(adjustedRatio)g/U")
+
+            totalWeightedRatio += adjustedRatio * weight
+            totalGlucoseChange += glucoseChange * weight
+            totalStartGlucose += meal.startGlucose.quantity.doubleValue(for: .milligramsPerDeciliter) * weight
+            totalEndGlucose += meal.endGlucose.quantity.doubleValue(for: .milligramsPerDeciliter) * weight
+            totalWeight += weight
+        }
+
+        let recommendedRatio = totalWeight > 0 ? totalWeightedRatio / totalWeight : currentRatio
+        let avgGlucoseChange = totalWeight > 0 ? totalGlucoseChange / totalWeight : 0
+        let avgStartGlucose = totalWeight > 0 ? totalStartGlucose / totalWeight : 0
+        let avgEndGlucose = totalWeight > 0 ? totalEndGlucose / totalWeight : 0
+
+        // Round to 1 decimal place (e.g., 7.33 -> 7.3)
+        let roundedRatio = max(1.0, round(recommendedRatio * 10) / 10)
+
+        // Calculate confidence based on meal count
+        let confidence = min(1.0, Double(meals.count) / 5.0)
+
+        return CarbRatioRecommendation(
+            hourOfDay: hourOfDay,
+            startDate: segmentStart,
+            endDate: segmentEnd,
+            currentCarbRatio: currentRatio,
+            recommendedCarbRatio: roundedRatio,
+            averageGlucoseChange: avgGlucoseChange,
+            averageStartGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: avgStartGlucose),
+            averageEndGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: avgEndGlucose),
+            confidence: confidence,
+            mealCount: meals.count,
+            qualifyingMeals: meals
+        )
+    }
+
+    /// Merge consecutive carb ratio recommendations with same ratio
+    private func mergeCarbRatioRecommendations(_ recs: [CarbRatioRecommendation]) -> [CarbRatioRecommendation] {
+        guard !recs.isEmpty else { return [] }
+
+        var merged: [CarbRatioRecommendation] = []
+        var currentGroup: [CarbRatioRecommendation] = [recs[0]]
+
+        for i in 1..<recs.count {
+            let prev = recs[i - 1]
+            let current = recs[i]
+
+            // Only merge if both have data and same ratio (within 0.1 tolerance for rounding)
+            let bothHaveData = prev.mealCount > 0 && current.mealCount > 0
+            let sameRatio = abs(current.recommendedCarbRatio - prev.recommendedCarbRatio) < 0.15
+
+            // Check if hours are consecutive
+            let calendar = Calendar.current
+            let prevHour = calendar.component(.hour, from: prev.endDate)
+            let currentHour = calendar.component(.hour, from: current.startDate)
+            let consecutive = (currentHour == (prevHour + 1) % 24) || (prevHour == 23 && currentHour == 0)
+
+            if bothHaveData && sameRatio && consecutive {
+                currentGroup.append(current)
+            } else {
+                if let mergedRec = createMergedCarbRatioRecommendation(from: currentGroup) {
+                    merged.append(mergedRec)
+                }
+                currentGroup = [current]
+            }
+        }
+
+        if let mergedRec = createMergedCarbRatioRecommendation(from: currentGroup) {
+            merged.append(mergedRec)
+        }
+
+        return merged
+    }
+
+    /// Create merged carb ratio recommendation from group
+    private func createMergedCarbRatioRecommendation(from group: [CarbRatioRecommendation]) -> CarbRatioRecommendation? {
+        guard let first = group.first, let last = group.last else { return nil }
+
+        let totalMealCount = group.reduce(0) { $0 + $1.mealCount }
+        let allMeals = group.flatMap { $0.qualifyingMeals }
+
+        var weightedChange: Double = 0
+        var weightedStartGlucose: Double = 0
+        var weightedEndGlucose: Double = 0
+        var weightedConfidence: Double = 0
+        var weightedCurrentRatio: Double = 0
+
+        for rec in group {
+            let weight = Double(rec.mealCount)
+            weightedChange += rec.averageGlucoseChange * weight
+            weightedStartGlucose += rec.averageStartGlucose.doubleValue(for: .milligramsPerDeciliter) * weight
+            weightedEndGlucose += rec.averageEndGlucose.doubleValue(for: .milligramsPerDeciliter) * weight
+            weightedConfidence += rec.confidence * weight
+            weightedCurrentRatio += rec.currentCarbRatio * weight
+        }
+
+        let totalWeight = Double(totalMealCount)
+        let avgChange = totalWeight > 0 ? weightedChange / totalWeight : 0
+        let avgStart = totalWeight > 0 ? weightedStartGlucose / totalWeight : 0
+        let avgEnd = totalWeight > 0 ? weightedEndGlucose / totalWeight : 0
+        let avgConfidence = totalWeight > 0 ? weightedConfidence / totalWeight : 0
+        let avgCurrent = totalWeight > 0 ? weightedCurrentRatio / totalWeight : first.currentCarbRatio
+
+        return CarbRatioRecommendation(
+            hourOfDay: first.hourOfDay,
+            startDate: first.startDate,
+            endDate: last.endDate,
+            currentCarbRatio: avgCurrent,
+            recommendedCarbRatio: first.recommendedCarbRatio,
+            averageGlucoseChange: avgChange,
+            averageStartGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: avgStart),
+            averageEndGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: avgEnd),
+            confidence: avgConfidence,
+            mealCount: totalMealCount,
+            qualifyingMeals: allMeals
+        )
+    }
 }
