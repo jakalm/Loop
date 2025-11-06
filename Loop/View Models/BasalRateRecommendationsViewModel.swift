@@ -14,8 +14,10 @@ import LoopCore
 public class BasalRateRecommendationsViewModel: ObservableObject {
     @Published var recommendations: [BasalRateRecommendation] = []
     @Published var isAnalyzing: Bool = false
-    @Published var selectedDays: Int = 14 {
+    @Published var selectedDays: Int {
         didSet {
+            // Save to UserDefaults
+            UserDefaults.standard.set(selectedDays, forKey: "BasalRateAnalysisPeriodDays")
             // Auto-refresh when selection changes
             refreshRecommendations()
         }
@@ -45,6 +47,10 @@ public class BasalRateRecommendationsViewModel: ObservableObject {
             doseStore: doseStore,
             settings: settings
         )
+
+        // Load saved preference or default to 14 days
+        let savedDays = UserDefaults.standard.integer(forKey: "BasalRateAnalysisPeriodDays")
+        self.selectedDays = savedDays > 0 ? savedDays : 14
     }
 
     func refreshRecommendations() {

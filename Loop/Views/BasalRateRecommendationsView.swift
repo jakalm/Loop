@@ -144,7 +144,7 @@ public struct BasalRateRecommendationsView: View {
         VStack(alignment: .leading, spacing: 12) {
             // Time header
             HStack {
-                Text(timeRangeString(for: recommendation.hourOfDay))
+                Text(timeRangeString(for: recommendation))
                     .font(.headline)
 
                 Spacer()
@@ -249,15 +249,11 @@ public struct BasalRateRecommendationsView: View {
         .cornerRadius(12)
     }
 
-    private func timeRangeString(for hour: Int) -> String {
-        let startFormatter = DateFormatter()
-        startFormatter.dateFormat = "HH:mm"
+    private func timeRangeString(for recommendation: BasalRateRecommendation) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
 
-        let calendar = Calendar.current
-        let startDate = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: Date()) ?? Date()
-        let endDate = calendar.date(byAdding: .hour, value: 4, to: startDate) ?? Date()
-
-        return "\(startFormatter.string(from: startDate)) - \(startFormatter.string(from: endDate))"
+        return "\(formatter.string(from: recommendation.startDate)) - \(formatter.string(from: recommendation.endDate))"
     }
 
     private func confidenceBadge(_ confidence: Double) -> some View {

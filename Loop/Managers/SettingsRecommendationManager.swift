@@ -748,48 +748,89 @@ class SettingsRecommendationManager {
         glucoseSamples: [StoredGlucoseSample],
         doseEntries: [DoseEntry]
     ) -> [BasalRateRecommendation] {
-        // Split day into 6 periods of 4 hours each
-        let periodHours = 4
-        let numberOfPeriods = 6
+        let calendar = Calendar.current
+        let referenceDate = Date()
+        let dayStart = calendar.startOfDay(for: referenceDate)
 
-        // Group windows by 4-hour time period (0-4, 4-8, 8-12, 12-16, 16-20, 20-24)
-        let windowsByPeriod = Dictionary(grouping: windows) { window -> Int in
-            return window.hourOfDay / periodHours
+        guard !windows.isEmpty else {
+            // No data at all - return insufficient data for entire day
+            let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? referenceDate
+            return [createInsufficientDataRecommendation(from: dayStart, to: dayEnd)]
+        }
+
+        // Normalize all window times to the same reference day (by time of day only)
+        // This way we can group windows from different days by their time of day
+        func normalizeToReferenceDay(_ date: Date) -> Date {
+            let components = calendar.dateComponents([.hour, .minute, .second], from: date)
+            return calendar.date(bySettingHour: components.hour ?? 0,
+                                minute: components.minute ?? 0,
+                                second: components.second ?? 0,
+                                of: dayStart) ?? date
+        }
+
+        // Collect all unique time-of-day boundaries from window starts and ends
+        // Track which boundaries are window ends (to keep them as-is) vs window starts (subtract 1 min)
+        var boundaries = Set<Date>()
+        var windowEnds = Set<Date>()
+
+        boundaries.insert(dayStart) // 00:00
+
+        for window in windows {
+            boundaries.insert(normalizeToReferenceDay(window.measurementStart))
+            let normalizedEnd = normalizeToReferenceDay(window.measurementEnd)
+            boundaries.insert(normalizedEnd)
+            windowEnds.insert(normalizedEnd)
+        }
+
+        // Sort boundaries by time of day
+        var sortedBoundaries = boundaries.sorted()
+
+        // Add end of day if not already present
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? referenceDate
+        if sortedBoundaries.last != dayEnd {
+            sortedBoundaries.append(dayEnd)
         }
 
         var recommendations: [BasalRateRecommendation] = []
 
-        // Generate recommendation for each of the 6 periods
-        for periodIndex in 0..<numberOfPeriods {
-            let periodStartHour = periodIndex * periodHours
-            let periodEndHour = periodStartHour + periodHours
-            let periodWindows = windowsByPeriod[periodIndex] ?? []
+        // Create a segment for each pair of consecutive boundaries
+        for i in 0..<(sortedBoundaries.count - 1) {
+            let currentBoundary = sortedBoundaries[i]
+            let nextBoundary = sortedBoundaries[i + 1]
 
-            // Create time representation for this period
-            let calendar = Calendar.current
-            let now = Date()
-            let periodStartDate = calendar.date(bySettingHour: periodStartHour, minute: 0, second: 0, of: now) ?? now
-            let periodEndDate = calendar.date(bySettingHour: periodEndHour, minute: 0, second: 0, of: now) ?? now
+            // Determine segment start time:
+            // - If current boundary is a window end, start 1 minute after (e.g., 09:04, 10:39)
+            // - Otherwise, use boundary as-is (e.g., 00:00, 02:58, 04:43)
+            let segmentStart: Date
+            if windowEnds.contains(currentBoundary) && currentBoundary != dayStart {
+                segmentStart = calendar.date(byAdding: .minute, value: 1, to: currentBoundary) ?? currentBoundary
+            } else {
+                segmentStart = currentBoundary
+            }
 
-            if periodWindows.isEmpty {
-                // No data for this period - create a recommendation indicating insufficient data
-                // Use current basal rate as reference since we have no historical data
-                let currentBasal = settings().basalRateSchedule?.value(at: periodStartDate) ?? 0.0
+            // Determine segment end time:
+            // - If next boundary is a window end, keep it as-is (e.g., 09:03, 10:38)
+            // - Otherwise, subtract 1 minute (e.g., 02:57, 04:42, 23:59)
+            let segmentEnd: Date
+            if windowEnds.contains(nextBoundary) {
+                segmentEnd = nextBoundary
+            } else {
+                segmentEnd = calendar.date(byAdding: .minute, value: -1, to: nextBoundary) ?? nextBoundary
+            }
 
-                let recommendation = BasalRateRecommendation(
-                    startDate: periodStartDate,
-                    endDate: periodEndDate,
-                    hourOfDay: periodStartHour,
-                    currentBasalRate: currentBasal,
-                    recommendedBasalRate: currentBasal,
-                    glucoseTrend: 0,
-                    startGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0),
-                    endGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0),
-                    confidence: 0,
-                    sampleCount: 0,
-                    qualifyingWindows: []
-                )
-                recommendations.append(recommendation)
+            // Find all windows that overlap this segment (by time of day)
+            // A window overlaps if it fully contains the segment
+            let overlappingWindows = windows.filter { window in
+                let normalizedWindowStart = normalizeToReferenceDay(window.measurementStart)
+                let normalizedWindowEnd = normalizeToReferenceDay(window.measurementEnd)
+                // Window must start at or before segment start, and end at or after segment end
+                return normalizedWindowStart <= segmentStart && normalizedWindowEnd >= segmentEnd
+            }
+
+            // If no overlapping windows, this is a gap - create insufficient data recommendation
+            if overlappingWindows.isEmpty {
+                let insufficientRec = createInsufficientDataRecommendation(from: segmentStart, to: segmentEnd)
+                recommendations.append(insufficientRec)
                 continue
             }
 
@@ -800,7 +841,7 @@ class SettingsRecommendationManager {
             var startGlucoseValues: [HKQuantity] = []
             var endGlucoseValues: [HKQuantity] = []
 
-            for window in periodWindows {
+            for window in overlappingWindows {
                 let windowGlucose = glucoseSamples.filter { sample in
                     sample.startDate >= window.measurementStart && sample.startDate <= window.measurementEnd
                 }.sorted { $0.startDate < $1.startDate }
@@ -830,8 +871,8 @@ class SettingsRecommendationManager {
                 endGlucoseValues.append(lastGlucose.quantity)
             }
 
-            // Get current basal rate setting for this time period
-            let currentBasal = settings().basalRateSchedule?.value(at: periodStartDate) ?? 0.0
+            // Get current basal rate setting for this segment
+            let currentBasal = settings().basalRateSchedule?.value(at: segmentStart) ?? 0.0
 
             // Calculate average insulin per hour and glucose change per hour
             let avgAbsorbedInsulinPerHour = totalDurationHours > 0 ? totalAbsorbedInsulin / totalDurationHours : 0
@@ -891,10 +932,13 @@ class SettingsRecommendationManager {
                 avgEnd = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0)
             }
 
+            let calendar = Calendar.current
+            let hourOfDay = calendar.component(.hour, from: segmentStart)
+
             let recommendation = BasalRateRecommendation(
-                startDate: periodStartDate,
-                endDate: periodEndDate,
-                hourOfDay: periodStartHour,
+                startDate: segmentStart,
+                endDate: segmentEnd,
+                hourOfDay: hourOfDay,
                 currentBasalRate: currentBasal,
                 recommendedBasalRate: recommendedBasal,
                 glucoseTrend: averageTrend,
@@ -902,13 +946,127 @@ class SettingsRecommendationManager {
                 endGlucose: avgEnd,
                 confidence: confidence,
                 sampleCount: validWindowCount,
-                qualifyingWindows: periodWindows
+                qualifyingWindows: overlappingWindows
             )
 
             recommendations.append(recommendation)
         }
 
-        return recommendations
+        // Merge consecutive segments with the same recommended basal rate
+        return mergeConsecutiveRecommendations(recommendations)
+    }
+
+    /// Creates an "Insufficient Data" recommendation for a time period
+    private func createInsufficientDataRecommendation(from startDate: Date, to endDate: Date) -> BasalRateRecommendation {
+        let calendar = Calendar.current
+        let hourOfDay = calendar.component(.hour, from: startDate)
+        let currentBasal = settings().basalRateSchedule?.value(at: startDate) ?? 0.0
+
+        return BasalRateRecommendation(
+            startDate: startDate,
+            endDate: endDate,
+            hourOfDay: hourOfDay,
+            currentBasalRate: currentBasal,
+            recommendedBasalRate: currentBasal,
+            glucoseTrend: 0,
+            startGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0),
+            endGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0),
+            confidence: 0,
+            sampleCount: 0,
+            qualifyingWindows: []
+        )
+    }
+
+    /// Merges consecutive hourly recommendations that have the same recommended basal rate
+    private func mergeConsecutiveRecommendations(_ hourlyRecs: [BasalRateRecommendation]) -> [BasalRateRecommendation] {
+        guard !hourlyRecs.isEmpty else { return [] }
+
+        var merged: [BasalRateRecommendation] = []
+        var currentGroup: [BasalRateRecommendation] = [hourlyRecs[0]]
+
+        for i in 1..<hourlyRecs.count {
+            let prev = hourlyRecs[i - 1]
+            let current = hourlyRecs[i]
+
+            // Check if this segment should be merged with the previous group
+            // Only merge if:
+            // 1. Both have data (sampleCount > 0) OR both have no data (sampleCount == 0)
+            // 2. Recommended basal rates are the same (within 0.001 tolerance)
+            let bothHaveData = prev.sampleCount > 0 && current.sampleCount > 0
+            let bothNoData = prev.sampleCount == 0 && current.sampleCount == 0
+            let sameBasalRate = abs(current.recommendedBasalRate - prev.recommendedBasalRate) < 0.001
+
+            if (bothHaveData || bothNoData) && sameBasalRate {
+                currentGroup.append(current)
+            } else {
+                // Different category or basal rate - finalize current group and start new one
+                if let mergedRec = createMergedRecommendation(from: currentGroup) {
+                    merged.append(mergedRec)
+                }
+                currentGroup = [current]
+            }
+        }
+
+        // Don't forget the last group
+        if let mergedRec = createMergedRecommendation(from: currentGroup) {
+            merged.append(mergedRec)
+        }
+
+        return merged
+    }
+
+    /// Creates a single recommendation from a group of consecutive hourly recommendations
+    private func createMergedRecommendation(from group: [BasalRateRecommendation]) -> BasalRateRecommendation? {
+        guard let first = group.first, let last = group.last else { return nil }
+
+        // Use the start of the first hour and end of the last hour
+        let startDate = first.startDate
+        let endDate = last.endDate
+        let hourOfDay = first.hourOfDay
+
+        // Aggregate statistics from all hours in the group
+        let totalSampleCount = group.reduce(0) { $0 + $1.sampleCount }
+        let allWindows = group.flatMap { $0.qualifyingWindows }
+
+        // Weight averages by sample count
+        var weightedTrend: Double = 0
+        var weightedStartGlucose: Double = 0
+        var weightedEndGlucose: Double = 0
+        var weightedConfidence: Double = 0
+        var weightedCurrentBasal: Double = 0
+
+        for rec in group {
+            let weight = Double(rec.sampleCount)
+            weightedTrend += rec.glucoseTrend * weight
+            weightedStartGlucose += rec.startGlucose.doubleValue(for: .milligramsPerDeciliter) * weight
+            weightedEndGlucose += rec.endGlucose.doubleValue(for: .milligramsPerDeciliter) * weight
+            weightedConfidence += rec.confidence * weight
+            weightedCurrentBasal += rec.currentBasalRate * weight
+        }
+
+        let totalWeight = Double(totalSampleCount)
+        let avgTrend = totalWeight > 0 ? weightedTrend / totalWeight : 0
+        let avgStartGlucose = totalWeight > 0 ? weightedStartGlucose / totalWeight : 0
+        let avgEndGlucose = totalWeight > 0 ? weightedEndGlucose / totalWeight : 0
+        let avgConfidence = totalWeight > 0 ? weightedConfidence / totalWeight : 0
+        let avgCurrentBasal = totalWeight > 0 ? weightedCurrentBasal / totalWeight : first.currentBasalRate
+
+        // Use the recommended basal from the first (they're all the same in the group)
+        let recommendedBasal = first.recommendedBasalRate
+
+        return BasalRateRecommendation(
+            startDate: startDate,
+            endDate: endDate,
+            hourOfDay: hourOfDay,
+            currentBasalRate: avgCurrentBasal,
+            recommendedBasalRate: recommendedBasal,
+            glucoseTrend: avgTrend,
+            startGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: avgStartGlucose),
+            endGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: avgEndGlucose),
+            confidence: avgConfidence,
+            sampleCount: totalSampleCount,
+            qualifyingWindows: allWindows
+        )
     }
 
     /// Calculate the average scheduled basal rate that was actually delivered during a period
