@@ -122,12 +122,12 @@ class SettingsRecommendationManager {
             group.leave()
         }
 
-        // Fetch carbs via getGlucoseEffects (which returns entries)
+        // Fetch carbs
         group.enter()
-        carbStore.getGlucoseEffects(start: startDate, end: endDate, effectVelocities: []) { result in
+        carbStore.getCarbEntries(start: startDate, end: endDate) { result in
             switch result {
-            case .success(let data):
-                carbEntries = data.entries
+            case .success(let entries):
+                carbEntries = entries
             case .failure(let error):
                 errors.append(error)
             }
@@ -170,9 +170,6 @@ class SettingsRecommendationManager {
         let glucoseStart = glucoseSamples.first?.startDate
         let glucoseEnd = glucoseSamples.last?.startDate
 
-        logger.info("Analysis: startDate=\(startDate), endDate=\(endDate)")
-        logger.info("Glucose samples: count=\(glucoseSamples.count), first=\(String(describing: glucoseStart)), last=\(String(describing: glucoseEnd))")
-
         // Find continuous periods that meet all criteria
         let (windows, debugPeriods) = findContinuousValidPeriods(
             glucoseSamples: glucoseSamples,
@@ -181,8 +178,6 @@ class SettingsRecommendationManager {
             from: startDate,
             to: endDate
         )
-
-        logger.info("Analysis complete: totalChecked=\(debugPeriods.count), validFound=\(windows.count)")
 
         let debugInfo = BasalAnalysisDebugInfo(
             analyzedPeriods: debugPeriods,
@@ -206,112 +201,264 @@ class SettingsRecommendationManager {
         var windows: [BasalAnalysisWindow] = []
         var debugPeriods: [PeriodAnalysisDebug] = []
 
+        // Pre-sort data once for binary search optimizations
+        let sortedGlucose = glucoseSamples.sorted { $0.startDate < $1.startDate }
+        let sortedCarbs = carbEntries.sorted { $0.startDate < $1.startDate }
+        let sortedBoluses = doseEntries.filter { $0.type == .bolus }.sorted { $0.startDate < $1.startDate }
+
+        // Pre-compute lookup structures for O(1) checks
+        let lowGlucoseThreshold: Double = 72.0  // 4.0 mmol/L
+        let lowGlucoseCheckWindow = 8 * .hours(1)
+
+        // Create time-bucketed index for low glucose (bucket by hour for fast range queries)
+        var lowGlucoseByHour: [Int: [Date]] = [:]
+        for sample in sortedGlucose where sample.quantity.doubleValue(for: .milligramsPerDeciliter) < lowGlucoseThreshold {
+            let hourBucket = Int(sample.startDate.timeIntervalSince1970 / 3600)
+            lowGlucoseByHour[hourBucket, default: []].append(sample.startDate)
+        }
+
+        // Pre-compute carb activity windows
+        let maxCarbAbsorptionDuration = 8 * .hours(1)
+        let carbActiveWindows: [(start: Date, end: Date)] = sortedCarbs.compactMap { carb in
+            guard carb.quantity.doubleValue(for: .gram()) > 1.0 else { return nil }
+            return (start: carb.startDate, end: carb.startDate.addingTimeInterval(maxCarbAbsorptionDuration))
+        }
+
         // Track continuous valid periods
         var currentPeriodStart: Date?
         var currentDate = startDate
 
+        // Cache for glucose index to avoid re-searching
+        var glucoseSearchStartIndex = 0
+        var carbCheckIndex = 0
+        var bolusCheckIndex = 0
+
         // Check every 5 minutes
         while currentDate < endDate {
-            let reasons = checkPointValidity(
-                at: currentDate,
-                carbEntries: carbEntries,
-                glucoseSamples: glucoseSamples,
-                doseEntries: doseEntries
+            // Quick disqualification checks first (cheapest to most expensive)
+
+            // 1. Check low glucose using bucketed index
+            let hasRecentLow = hasLowGlucoseInWindow(
+                date: currentDate,
+                window: lowGlucoseCheckWindow,
+                lowGlucoseByHour: lowGlucoseByHour
             )
 
-            let isValid = reasons.isEmpty
-
-            if isValid {
-                // Start new period if not already tracking one
-                if currentPeriodStart == nil {
-                    currentPeriodStart = currentDate
-                }
-            } else {
-                // End current period if we were tracking one
+            if hasRecentLow {
                 if let periodStart = currentPeriodStart {
-                    let duration = currentDate.timeIntervalSince(periodStart)
-
-                    // If period is at least 2 hours, it's valid
-                    if duration >= minimumMeasurementHours {
-                        // Collect active doses for this period
-                        let activeDoses = collectActiveDoses(
-                            doseEntries: doseEntries,
-                            measurementStart: periodStart,
-                            measurementEnd: currentDate
-                        )
-
-                        windows.append(BasalAnalysisWindow(
-                            measurementStart: periodStart,
-                            measurementEnd: currentDate,
-                            carbFreeStart: periodStart,
-                            activeDoses: activeDoses
-                        ))
-
-                        debugPeriods.append(PeriodAnalysisDebug(
-                            measurementStart: periodStart,
-                            measurementEnd: currentDate,
-                            duration: duration,
-                            isValid: true,
-                            rejectionReasons: []
-                        ))
-                    } else {
-                        // Period too short
-                        debugPeriods.append(PeriodAnalysisDebug(
-                            measurementStart: periodStart,
-                            measurementEnd: currentDate,
-                            duration: duration,
-                            isValid: false,
-                            rejectionReasons: ["Period too short (\(String(format: "%.1f", duration / .hours(1)))h < 3h)"]
-                        ))
-                    }
-
+                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, &windows, &debugPeriods)
                     currentPeriodStart = nil
                 }
+                currentDate = currentDate.addingTimeInterval(analysisWindowStride)
+                continue
+            }
+
+            // 2. Check active carbs using pre-computed windows (optimized with binary search concept)
+            var hasActiveCarbs = false
+            for window in carbActiveWindows {
+                // Since carbs are sorted by start date, we can break early
+                if window.start > currentDate {
+                    break // All remaining windows start after currentDate
+                }
+                if currentDate >= window.start && currentDate < window.end {
+                    hasActiveCarbs = true
+                    break
+                }
+            }
+
+            if hasActiveCarbs {
+                if let periodStart = currentPeriodStart {
+                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, &windows, &debugPeriods)
+                    currentPeriodStart = nil
+                }
+                currentDate = currentDate.addingTimeInterval(analysisWindowStride)
+                continue
+            }
+
+            // 3. Check IOB with cached index
+            let iob = calculateActiveInsulinCached(
+                sortedBoluses: sortedBoluses,
+                at: currentDate,
+                cacheIndex: &bolusCheckIndex
+            )
+
+            if abs(iob) > 0.5 {
+                if let periodStart = currentPeriodStart {
+                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, &windows, &debugPeriods)
+                    currentPeriodStart = nil
+                }
+                currentDate = currentDate.addingTimeInterval(analysisWindowStride)
+                continue
+            }
+
+            // 4. Check glucose (most expensive, do last)
+            let glucoseCheck = findNearbyGlucose(
+                at: currentDate,
+                sortedGlucose: sortedGlucose,
+                cacheIndex: &glucoseSearchStartIndex
+            )
+
+            guard let glucose = glucoseCheck.glucose, glucoseCheck.inRange else {
+                if let periodStart = currentPeriodStart {
+                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, &windows, &debugPeriods)
+                    currentPeriodStart = nil
+                }
+                currentDate = currentDate.addingTimeInterval(analysisWindowStride)
+                continue
+            }
+
+            // Point is valid - continue or start period
+            if currentPeriodStart == nil {
+                currentPeriodStart = currentDate
             }
 
             currentDate = currentDate.addingTimeInterval(analysisWindowStride)
         }
 
-        // Handle final period if still tracking one
+        // Finalize any remaining period
         if let periodStart = currentPeriodStart {
-            let duration = endDate.timeIntervalSince(periodStart)
-
-            if duration >= minimumMeasurementHours {
-                let activeDoses = collectActiveDoses(
-                    doseEntries: doseEntries,
-                    measurementStart: periodStart,
-                    measurementEnd: endDate
-                )
-
-                windows.append(BasalAnalysisWindow(
-                    measurementStart: periodStart,
-                    measurementEnd: endDate,
-                    carbFreeStart: periodStart,
-                    activeDoses: activeDoses
-                ))
-
-                debugPeriods.append(PeriodAnalysisDebug(
-                    measurementStart: periodStart,
-                    measurementEnd: endDate,
-                    duration: duration,
-                    isValid: true,
-                    rejectionReasons: []
-                ))
-            } else {
-                debugPeriods.append(PeriodAnalysisDebug(
-                    measurementStart: periodStart,
-                    measurementEnd: endDate,
-                    duration: duration,
-                    isValid: false,
-                    rejectionReasons: ["Period too short (\(String(format: "%.1f", duration / .hours(1)))h < 3h)"]
-                ))
-            }
+            finalizePeriod(periodStart, endDate, doseEntries: doseEntries, &windows, &debugPeriods)
         }
 
         return (windows, debugPeriods)
     }
 
-    /// Check if a specific time point meets all criteria
+    private func finalizePeriod(
+        _ periodStart: Date,
+        _ periodEnd: Date,
+        doseEntries: [DoseEntry],
+        _ windows: inout [BasalAnalysisWindow],
+        _ debugPeriods: inout [PeriodAnalysisDebug]
+    ) {
+        let duration = periodEnd.timeIntervalSince(periodStart)
+
+        if duration >= minimumMeasurementHours {
+            // Valid period - add to windows
+            let activeDoses = collectActiveDoses(
+                doseEntries: doseEntries,
+                measurementStart: periodStart,
+                measurementEnd: periodEnd
+            )
+            windows.append(BasalAnalysisWindow(
+                measurementStart: periodStart,
+                measurementEnd: periodEnd,
+                carbFreeStart: periodStart,
+                activeDoses: activeDoses
+            ))
+            debugPeriods.append(PeriodAnalysisDebug(
+                measurementStart: periodStart,
+                measurementEnd: periodEnd,
+                duration: duration,
+                isValid: true,
+                rejectionReasons: []
+            ))
+        } else if duration > 0 {
+            // Too short - add to debug only
+            debugPeriods.append(PeriodAnalysisDebug(
+                measurementStart: periodStart,
+                measurementEnd: periodEnd,
+                duration: duration,
+                isValid: false,
+                rejectionReasons: ["Period too short (\(String(format: "%.1f", duration / .hours(1)))h < 3h)"]
+            ))
+        }
+    }
+
+    private func hasLowGlucoseInWindow(
+        date: Date,
+        window: TimeInterval,
+        lowGlucoseByHour: [Int: [Date]]
+    ) -> Bool {
+        let checkStart = date.addingTimeInterval(-window)
+        let startHourBucket = Int(checkStart.timeIntervalSince1970 / 3600)
+        let endHourBucket = Int(date.timeIntervalSince1970 / 3600)
+
+        // Check all hour buckets in the window
+        for hourBucket in startHourBucket...endHourBucket {
+            if let dates = lowGlucoseByHour[hourBucket] {
+                for lowDate in dates where lowDate >= checkStart && lowDate < date {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    private func findNearbyGlucose(
+        at date: Date,
+        sortedGlucose: [StoredGlucoseSample],
+        cacheIndex: inout Int
+    ) -> (glucose: StoredGlucoseSample?, inRange: Bool) {
+        let glucoseWindow: TimeInterval = 10 * 60
+        var closestGlucose: StoredGlucoseSample?
+        var closestDistance = Double.infinity
+
+        // Search forward from cached index
+        let startIndex = max(0, cacheIndex - 5) // Look back a bit in case we skipped
+        for i in startIndex..<sortedGlucose.count {
+            let sample = sortedGlucose[i]
+            let distance = abs(sample.startDate.timeIntervalSince(date))
+
+            // If we've gone too far past our window, stop searching
+            if sample.startDate > date && distance > glucoseWindow {
+                break
+            }
+
+            if distance <= glucoseWindow && distance < closestDistance {
+                closestGlucose = sample
+                closestDistance = distance
+                cacheIndex = i
+            }
+        }
+
+        guard let glucose = closestGlucose else {
+            return (nil, false)
+        }
+
+        // Check if in range
+        let glucoseValue = glucose.quantity.doubleValue(for: .milligramsPerDeciliter)
+        let lowerThreshold: Double = 72.0  // 4.0 mmol/L
+        let upperThreshold: Double = 234.0 // 13.0 mmol/L
+        let inRange = glucoseValue >= lowerThreshold && glucoseValue <= upperThreshold
+
+        return (glucose, inRange)
+    }
+
+    private func calculateActiveInsulinCached(
+        sortedBoluses: [DoseEntry],
+        at date: Date,
+        cacheIndex: inout Int
+    ) -> Double {
+        let insulinActionDuration: TimeInterval = 6 * .hours(1)
+        let earliestRelevantTime = date.addingTimeInterval(-insulinActionDuration)
+        var totalIOB: Double = 0
+
+        // Start from cached index (or beginning if cache is invalid)
+        let startIndex = max(0, cacheIndex)
+
+        for i in startIndex..<sortedBoluses.count {
+            let dose = sortedBoluses[i]
+
+            // Stop if we've passed the current date
+            if dose.startDate >= date {
+                break
+            }
+
+            // Skip if too old to be active
+            if dose.startDate < earliestRelevantTime {
+                cacheIndex = i + 1 // Update cache to skip old boluses next time
+                continue
+            }
+
+            let timeSinceDose = date.timeIntervalSince(dose.startDate)
+            let percentRemaining = max(0, 1 - (timeSinceDose / insulinActionDuration))
+            let activeInsulin = dose.programmedUnits * percentRemaining
+            totalIOB += activeInsulin
+        }
+
+        return totalIOB
+    }
+
     private func checkPointValidity(
         at date: Date,
         carbEntries: [StoredCarbEntry],

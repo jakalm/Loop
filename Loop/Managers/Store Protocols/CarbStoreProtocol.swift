@@ -36,7 +36,9 @@ protocol CarbStoreProtocol: AnyObject {
     func addCarbEntry(_ entry: NewCarbEntry, completion: @escaping (_ result: CarbStoreResult<StoredCarbEntry>) -> Void)
     
     func getCarbStatus(start: Date, end: Date?, effectVelocities: [GlucoseEffectVelocity]?, completion: @escaping (_ result: CarbStoreResult<[CarbStatus<StoredCarbEntry>]>) -> Void)
-    
+
+    func getCarbEntries(start: Date?, end: Date?, completion: @escaping (_ result: CarbStoreResult<[StoredCarbEntry]>) -> Void)
+
     func generateDiagnosticReport(_ completion: @escaping (_ report: String) -> Void)
     
     // MARK: COB & Effect Generation
