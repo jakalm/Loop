@@ -71,6 +71,7 @@
 		1DDE273E24AEA4B000796622 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE09BA824A3E23F009EE9F9 /* SettingsView.swift */; };
 		1DDE274024AEA4F200796622 /* NotificationsCriticalAlertPermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA46B5F2492E2E300D71A63 /* NotificationsCriticalAlertPermissionsView.swift */; };
 		1DFE9E172447B6270082C280 /* UserNotificationAlertSchedulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DFE9E162447B6270082C280 /* UserNotificationAlertSchedulerTests.swift */; };
+		363C78332EB7C4DC008D715E /* PeriodDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363C78322EB7C4DC008D715E /* PeriodDetailView.swift */; };
 		36F166DD2EB2A97400137813 /* DeferredMealBolus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166DC2EB2A97400137813 /* DeferredMealBolus.swift */; };
 		36F166DF2EB2AFE900137813 /* DeferredMealBolusSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166DE2EB2AFE900137813 /* DeferredMealBolusSelectionView.swift */; };
 		36F166E12EB2B7D900137813 /* BasalRateRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F166E02EB2B7D900137813 /* BasalRateRecommendationsView.swift */; };
@@ -798,6 +799,7 @@
 		1DC63E7325351BDF004605DA /* TrueTime.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = TrueTime.framework; path = Carthage/Build/iOS/TrueTime.framework; sourceTree = "<group>"; };
 		1DE09BA824A3E23F009EE9F9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		1DFE9E162447B6270082C280 /* UserNotificationAlertSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserNotificationAlertSchedulerTests.swift; sourceTree = "<group>"; };
+		363C78322EB7C4DC008D715E /* PeriodDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeriodDetailView.swift; sourceTree = "<group>"; };
 		36F166DC2EB2A97400137813 /* DeferredMealBolus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeferredMealBolus.swift; sourceTree = "<group>"; };
 		36F166DE2EB2AFE900137813 /* DeferredMealBolusSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeferredMealBolusSelectionView.swift; sourceTree = "<group>"; };
 		36F166E02EB2B7D900137813 /* BasalRateRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasalRateRecommendationsView.swift; sourceTree = "<group>"; };
@@ -2269,6 +2271,7 @@
 		43F5C2CF1B92A2ED003EB13D /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				363C78322EB7C4DC008D715E /* PeriodDetailView.swift */,
 				36F166E02EB2B7D900137813 /* BasalRateRecommendationsView.swift */,
 				36F166DE2EB2AFE900137813 /* DeferredMealBolusSelectionView.swift */,
 				1452F4AA2A851EDF00F8B9E4 /* AddEditFavoriteFoodView.swift */,
@@ -3695,6 +3698,7 @@
 				C1F2075C26D6F9B0007AB7EB /* AppExpirationAlerter.swift in Sources */,
 				B4FEEF7D24B8A71F00A8DF9B /* DeviceDataManager+DeviceStatus.swift in Sources */,
 				142CB7592A60BF2E0075748A /* EditMode.swift in Sources */,
+				363C78332EB7C4DC008D715E /* PeriodDetailView.swift in Sources */,
 				E95D380324EADF36005E2F50 /* CarbStoreProtocol.swift in Sources */,
 				B470F5842AB22B5100049695 /* StatefulPluggable.swift in Sources */,
 				E98A55ED24EDD6380008715D /* LatestStoredSettingsProvider.swift in Sources */,

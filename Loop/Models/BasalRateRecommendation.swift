@@ -8,6 +8,7 @@
 
 import Foundation
 import HealthKit
+import LoopKit
 
 /// Represents a basal rate recommendation based on historical data analysis
 struct BasalRateRecommendation: Identifiable {
@@ -43,6 +44,9 @@ struct BasalRateRecommendation: Identifiable {
     /// Number of similar periods found
     let sampleCount: Int
 
+    /// Actual qualifying windows used for this recommendation
+    let qualifyingWindows: [BasalAnalysisWindow]
+
     var changeAmount: Double {
         return recommendedBasalRate - currentBasalRate
     }
@@ -75,6 +79,9 @@ struct BasalAnalysisWindow {
     /// Start of the carb-free period (3 hours before measurement)
     let carbFreeStart: Date
 
+    /// Active doses (boluses, temp basals) affecting this period
+    let activeDoses: [DoseEntry]
+
     /// Hour of day (0-23) for grouping
     var hourOfDay: Int {
         Calendar.current.component(.hour, from: measurementStart)
@@ -84,4 +91,28 @@ struct BasalAnalysisWindow {
     var duration: TimeInterval {
         return measurementEnd.timeIntervalSince(measurementStart)
     }
+}
+
+/// Debug information about why a period was rejected or accepted
+struct PeriodAnalysisDebug: Identifiable {
+    let id = UUID()
+    let measurementStart: Date
+    let measurementEnd: Date
+    let duration: TimeInterval
+    let isValid: Bool
+    let rejectionReasons: [String]
+
+    var durationHours: Double {
+        duration / .hours(1)
+    }
+}
+
+/// Debug results from basal rate analysis
+struct BasalAnalysisDebugInfo {
+    let analyzedPeriods: [PeriodAnalysisDebug]
+    let totalPeriodsChecked: Int
+    let validPeriodsFound: Int
+    let totalGlucoseSamples: Int
+    let glucoseDateRange: (start: Date?, end: Date?)
+    let analysisPeriod: (start: Date, end: Date)
 }

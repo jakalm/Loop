@@ -20,9 +20,8 @@ class SettingsRecommendationManager {
     private let logger = Logger(subsystem: "com.loopkit.Loop", category: "SettingsRecommendationManager")
 
     // Analysis parameters
-    private let minimumCarbFreeHours: TimeInterval = 3 * .hours(1)
     private let minimumMeasurementHours: TimeInterval = 3 * .hours(1)
-    private let analysisWindowStride: TimeInterval = 1 * .hours(1) // Check every hour
+    private let analysisWindowStride: TimeInterval = 5 * 60 // Check every 5 minutes for continuous periods
 
     init(glucoseStore: GlucoseStoreProtocol,
          carbStore: CarbStoreProtocol,
@@ -43,7 +42,7 @@ class SettingsRecommendationManager {
         fetchAnalysisData(from: startDate, to: endDate) { result in
             switch result {
             case .success(let data):
-                let windows = self.identifyValidAnalysisWindows(
+                let (windows, _) = self.identifyValidAnalysisWindows(
                     glucoseSamples: data.glucoseSamples,
                     carbEntries: data.carbEntries,
                     doseEntries: data.doseEntries,
@@ -51,12 +50,49 @@ class SettingsRecommendationManager {
                     to: endDate
                 )
 
-                let recommendations = self.generateRecommendations(from: windows, glucoseSamples: data.glucoseSamples)
+                let recommendations = self.generateRecommendations(
+                    from: windows,
+                    glucoseSamples: data.glucoseSamples,
+                    doseEntries: data.doseEntries
+                )
                 completion(recommendations)
 
             case .failure(let error):
                 self.logger.error("Failed to fetch analysis data: \(String(describing: error))")
                 completion([])
+            }
+        }
+    }
+
+    /// Generate debug information about period analysis
+    func generateDebugInfo(daysToAnalyze: Int, completion: @escaping (BasalAnalysisDebugInfo) -> Void) {
+        let endDate = Date()
+        let startDate = endDate.addingTimeInterval(-TimeInterval(daysToAnalyze) * .hours(24))
+
+        // Fetch all necessary data
+        fetchAnalysisData(from: startDate, to: endDate) { result in
+            switch result {
+            case .success(let data):
+                let (windows, debugInfo) = self.identifyValidAnalysisWindows(
+                    glucoseSamples: data.glucoseSamples,
+                    carbEntries: data.carbEntries,
+                    doseEntries: data.doseEntries,
+                    from: startDate,
+                    to: endDate
+                )
+
+                completion(debugInfo)
+
+            case .failure(let error):
+                self.logger.error("Failed to fetch analysis data: \(String(describing: error))")
+                completion(BasalAnalysisDebugInfo(
+                    analyzedPeriods: [],
+                    totalPeriodsChecked: 0,
+                    validPeriodsFound: 0,
+                    totalGlucoseSamples: 0,
+                    glucoseDateRange: (start: nil, end: nil),
+                    analysisPeriod: (start: startDate, end: endDate)
+                ))
             }
         }
     }
@@ -129,45 +165,322 @@ class SettingsRecommendationManager {
         doseEntries: [DoseEntry],
         from startDate: Date,
         to endDate: Date
-    ) -> [BasalAnalysisWindow] {
+    ) -> ([BasalAnalysisWindow], BasalAnalysisDebugInfo) {
+        // Calculate glucose date range for debugging
+        let glucoseStart = glucoseSamples.first?.startDate
+        let glucoseEnd = glucoseSamples.last?.startDate
+
+        logger.info("Analysis: startDate=\(startDate), endDate=\(endDate)")
+        logger.info("Glucose samples: count=\(glucoseSamples.count), first=\(String(describing: glucoseStart)), last=\(String(describing: glucoseEnd))")
+
+        // Find continuous periods that meet all criteria
+        let (windows, debugPeriods) = findContinuousValidPeriods(
+            glucoseSamples: glucoseSamples,
+            carbEntries: carbEntries,
+            doseEntries: doseEntries,
+            from: startDate,
+            to: endDate
+        )
+
+        logger.info("Analysis complete: totalChecked=\(debugPeriods.count), validFound=\(windows.count)")
+
+        let debugInfo = BasalAnalysisDebugInfo(
+            analyzedPeriods: debugPeriods,
+            totalPeriodsChecked: debugPeriods.count,
+            validPeriodsFound: windows.count,
+            totalGlucoseSamples: glucoseSamples.count,
+            glucoseDateRange: (start: glucoseStart, end: glucoseEnd),
+            analysisPeriod: (start: startDate, end: endDate)
+        )
+
+        return (windows, debugInfo)
+    }
+
+    private func findContinuousValidPeriods(
+        glucoseSamples: [StoredGlucoseSample],
+        carbEntries: [StoredCarbEntry],
+        doseEntries: [DoseEntry],
+        from startDate: Date,
+        to endDate: Date
+    ) -> ([BasalAnalysisWindow], [PeriodAnalysisDebug]) {
         var windows: [BasalAnalysisWindow] = []
+        var debugPeriods: [PeriodAnalysisDebug] = []
+
+        // Track continuous valid periods
+        var currentPeriodStart: Date?
         var currentDate = startDate
 
+        // Check every 5 minutes
         while currentDate < endDate {
-            let measurementStart = currentDate
-            let measurementEnd = measurementStart.addingTimeInterval(minimumMeasurementHours)
-            let carbFreeStart = measurementStart.addingTimeInterval(-minimumCarbFreeHours)
-
-            // Check if this window is valid
-            if isValidAnalysisWindow(
-                carbFreeStart: carbFreeStart,
-                measurementStart: measurementStart,
-                measurementEnd: measurementEnd,
+            let reasons = checkPointValidity(
+                at: currentDate,
                 carbEntries: carbEntries,
-                doseEntries: doseEntries,
-                glucoseSamples: glucoseSamples
-            ) {
-                windows.append(BasalAnalysisWindow(
-                    measurementStart: measurementStart,
-                    measurementEnd: measurementEnd,
-                    carbFreeStart: carbFreeStart
-                ))
+                glucoseSamples: glucoseSamples,
+                doseEntries: doseEntries
+            )
+
+            let isValid = reasons.isEmpty
+
+            if isValid {
+                // Start new period if not already tracking one
+                if currentPeriodStart == nil {
+                    currentPeriodStart = currentDate
+                }
+            } else {
+                // End current period if we were tracking one
+                if let periodStart = currentPeriodStart {
+                    let duration = currentDate.timeIntervalSince(periodStart)
+
+                    // If period is at least 2 hours, it's valid
+                    if duration >= minimumMeasurementHours {
+                        // Collect active doses for this period
+                        let activeDoses = collectActiveDoses(
+                            doseEntries: doseEntries,
+                            measurementStart: periodStart,
+                            measurementEnd: currentDate
+                        )
+
+                        windows.append(BasalAnalysisWindow(
+                            measurementStart: periodStart,
+                            measurementEnd: currentDate,
+                            carbFreeStart: periodStart,
+                            activeDoses: activeDoses
+                        ))
+
+                        debugPeriods.append(PeriodAnalysisDebug(
+                            measurementStart: periodStart,
+                            measurementEnd: currentDate,
+                            duration: duration,
+                            isValid: true,
+                            rejectionReasons: []
+                        ))
+                    } else {
+                        // Period too short
+                        debugPeriods.append(PeriodAnalysisDebug(
+                            measurementStart: periodStart,
+                            measurementEnd: currentDate,
+                            duration: duration,
+                            isValid: false,
+                            rejectionReasons: ["Period too short (\(String(format: "%.1f", duration / .hours(1)))h < 3h)"]
+                        ))
+                    }
+
+                    currentPeriodStart = nil
+                }
             }
 
             currentDate = currentDate.addingTimeInterval(analysisWindowStride)
         }
 
-        return windows
+        // Handle final period if still tracking one
+        if let periodStart = currentPeriodStart {
+            let duration = endDate.timeIntervalSince(periodStart)
+
+            if duration >= minimumMeasurementHours {
+                let activeDoses = collectActiveDoses(
+                    doseEntries: doseEntries,
+                    measurementStart: periodStart,
+                    measurementEnd: endDate
+                )
+
+                windows.append(BasalAnalysisWindow(
+                    measurementStart: periodStart,
+                    measurementEnd: endDate,
+                    carbFreeStart: periodStart,
+                    activeDoses: activeDoses
+                ))
+
+                debugPeriods.append(PeriodAnalysisDebug(
+                    measurementStart: periodStart,
+                    measurementEnd: endDate,
+                    duration: duration,
+                    isValid: true,
+                    rejectionReasons: []
+                ))
+            } else {
+                debugPeriods.append(PeriodAnalysisDebug(
+                    measurementStart: periodStart,
+                    measurementEnd: endDate,
+                    duration: duration,
+                    isValid: false,
+                    rejectionReasons: ["Period too short (\(String(format: "%.1f", duration / .hours(1)))h < 3h)"]
+                ))
+            }
+        }
+
+        return (windows, debugPeriods)
     }
 
-    private func isValidAnalysisWindow(
+    /// Check if a specific time point meets all criteria
+    private func checkPointValidity(
+        at date: Date,
+        carbEntries: [StoredCarbEntry],
+        glucoseSamples: [StoredGlucoseSample],
+        doseEntries: [DoseEntry]
+    ) -> [String] {
+        var reasons: [String] = []
+
+        // Check for recent low blood glucose (within 8 hours before this point)
+        // This is a safety check to avoid recommending higher basals after lows
+        let lowGlucoseCheckWindow = 8 * .hours(1)
+        let lowGlucoseThreshold: Double = 72.0  // 4.0 mmol/L
+        let lowCheckStart = date.addingTimeInterval(-lowGlucoseCheckWindow)
+
+        let recentLows = glucoseSamples.filter { sample in
+            sample.startDate >= lowCheckStart &&
+            sample.startDate < date &&
+            sample.quantity.doubleValue(for: .milligramsPerDeciliter) < lowGlucoseThreshold
+        }
+
+        if !recentLows.isEmpty {
+            reasons.append("Recent low glucose (< 4.0 mmol/L) within 8 hours")
+            return reasons
+        }
+
+        // Check for active carbs at this point (>1g still absorbing)
+        // Use a conservative 8-hour absorption window
+        let maxCarbAbsorptionDuration = 8 * .hours(1)
+
+        let activeCarbsAtPoint = carbEntries.filter { carb in
+            // Carb must be entered before this point
+            guard carb.startDate <= date else { return false }
+
+            // Check if carb is still absorbing at this time point
+            let carbEndTime = carb.startDate.addingTimeInterval(maxCarbAbsorptionDuration)
+            guard carbEndTime > date else { return false }
+
+            // Only care if more than 1g
+            return carb.quantity.doubleValue(for: .gram()) > 1.0
+        }
+
+        if !activeCarbsAtPoint.isEmpty {
+            reasons.append("Active carbs (>1g)")
+            return reasons
+        }
+
+        // Check for high active insulin (IOB from boluses)
+        // Only check boluses - exclude basal/temp basal since we want to analyze those
+        let insulinActionDuration: TimeInterval = 6 * .hours(1)
+        let iob = calculateActiveInsulin(
+            doseEntries: doseEntries,
+            at: date,
+            insulinActionDuration: insulinActionDuration
+        )
+
+        // If absolute IOB > 0.5 U, skip this point
+        // This includes both positive (excess insulin) and negative (insulin deficit from suspensions)
+        if abs(iob) > 0.5 {
+            reasons.append("High active insulin")
+            return reasons
+        }
+
+        // Check for glucose reading near this time point (within 10 minutes)
+        let glucoseWindow: TimeInterval = 10 * 60
+        let nearbyGlucose = glucoseSamples.filter { sample in
+            abs(sample.startDate.timeIntervalSince(date)) <= glucoseWindow
+        }.sorted { abs($0.startDate.timeIntervalSince(date)) < abs($1.startDate.timeIntervalSince(date)) }
+
+        guard let closestGlucose = nearbyGlucose.first else {
+            reasons.append("No glucose data")
+            return reasons
+        }
+
+        // Check if glucose is in range
+        let glucoseValue = closestGlucose.quantity.doubleValue(for: .milligramsPerDeciliter)
+        let lowerThreshold: Double = 72.0  // 4.0 mmol/L
+        let upperThreshold: Double = 234.0 // 13.0 mmol/L
+
+        if glucoseValue < lowerThreshold || glucoseValue > upperThreshold {
+            reasons.append("Glucose out of range")
+            return reasons
+        }
+
+        return reasons
+    }
+
+    /// Calculate active insulin on board (IOB) from boluses only at a specific time
+    /// Uses exponential insulin absorption model
+    private func calculateActiveInsulin(
+        doseEntries: [DoseEntry],
+        at date: Date,
+        insulinActionDuration: TimeInterval
+    ) -> Double {
+        var totalIOB: Double = 0
+
+        // Only consider boluses that could still be active
+        let relevantDoses = doseEntries.filter { dose in
+            dose.type == .bolus &&
+            dose.startDate < date &&
+            date.timeIntervalSince(dose.startDate) < insulinActionDuration
+        }
+
+        for dose in relevantDoses {
+            let timeSinceDose = date.timeIntervalSince(dose.startDate)
+
+            // Use exponential decay model (simplified)
+            // Assumes most insulin is absorbed in first 3 hours, tails off to 6 hours
+            let percentRemaining = max(0, 1.0 - (timeSinceDose / insulinActionDuration))
+            let iob = dose.programmedUnits * percentRemaining
+
+            totalIOB += iob
+        }
+
+        return totalIOB
+    }
+
+    private func collectActiveDoses(
+        doseEntries: [DoseEntry],
+        measurementStart: Date,
+        measurementEnd: Date
+    ) -> [DoseEntry] {
+        let insulinActionDuration: TimeInterval = 6 * .hours(1)
+
+        return doseEntries.filter { dose in
+            let doseEnd = dose.endDate
+            let doseStart = dose.startDate
+
+            switch dose.type {
+            case .bolus:
+                let bolusEndImpact = doseStart.addingTimeInterval(insulinActionDuration)
+                return bolusEndImpact > measurementStart && doseStart < measurementEnd
+            case .tempBasal, .resume, .suspend:
+                return doseStart < measurementEnd && doseEnd > measurementStart
+            case .basal:
+                return false
+            }
+        }
+    }
+
+    private func createAnalysisWindowWithDebug(
         carbFreeStart: Date,
         measurementStart: Date,
         measurementEnd: Date,
         carbEntries: [StoredCarbEntry],
         doseEntries: [DoseEntry],
         glucoseSamples: [StoredGlucoseSample]
-    ) -> Bool {
+    ) -> (BasalAnalysisWindow?, [String]) {
+        var rejectionReasons: [String] = []
+
+        return (createAnalysisWindow(
+            carbFreeStart: carbFreeStart,
+            measurementStart: measurementStart,
+            measurementEnd: measurementEnd,
+            carbEntries: carbEntries,
+            doseEntries: doseEntries,
+            glucoseSamples: glucoseSamples,
+            rejectionReasons: &rejectionReasons
+        ), rejectionReasons)
+    }
+
+    private func createAnalysisWindow(
+        carbFreeStart: Date,
+        measurementStart: Date,
+        measurementEnd: Date,
+        carbEntries: [StoredCarbEntry],
+        doseEntries: [DoseEntry],
+        glucoseSamples: [StoredGlucoseSample],
+        rejectionReasons: inout [String]
+    ) -> BasalAnalysisWindow? {
         // Check for carbs during the measurement period only
         let carbsInPeriod = carbEntries.filter { carb in
             let carbStart = carb.startDate
@@ -178,15 +491,37 @@ class SettingsRecommendationManager {
         }
 
         if !carbsInPeriod.isEmpty {
-            return false
+            rejectionReasons.append("Active carbs in period")
+            return nil
         }
 
-        // Check for boluses or temp basals that would affect the measurement period
+        // Check for sufficient glucose data
+        let glucoseInWindow = glucoseSamples.filter { sample in
+            sample.startDate >= measurementStart && sample.startDate <= measurementEnd
+        }
+
+        // Need at least 4 readings (one every 30 min for 2 hours)
+        if glucoseInWindow.count < 4 {
+            rejectionReasons.append("Insufficient glucose readings (\(glucoseInWindow.count) < 4)")
+            return nil
+        }
+
+        // Check that glucose was within 4.0-11.0 mmol/L (72-198 mg/dL) for at least 2 hours
+        if !isGlucoseInRangeForMinimumDuration(
+            glucoseSamples: glucoseInWindow,
+            measurementStart: measurementStart,
+            measurementEnd: measurementEnd,
+            minimumDuration: 2 * .hours(1)
+        ) {
+            rejectionReasons.append("Glucose not in range (4.0-11.0 mmol/L) for 2+ hours")
+            return nil
+        }
+
+        // Collect doses that affect this period for insulin correction
         // Insulin remains active for ~6 hours after a bolus
         let insulinActionDuration: TimeInterval = 6 * .hours(1)
-        let bolusCheckStart = measurementStart.addingTimeInterval(-insulinActionDuration)
 
-        let dosesInPeriod = doseEntries.filter { dose in
+        let activeDoses = doseEntries.filter { dose in
             let doseEnd = dose.endDate
             let doseStart = dose.startDate
 
@@ -203,31 +538,12 @@ class SettingsRecommendationManager {
             }
         }
 
-        if !dosesInPeriod.isEmpty {
-            return false
-        }
-
-        // Check for sufficient glucose data
-        let glucoseInWindow = glucoseSamples.filter { sample in
-            sample.startDate >= measurementStart && sample.startDate <= measurementEnd
-        }
-
-        // Need at least 6 readings (one every 30 min for 3 hours)
-        if glucoseInWindow.count < 6 {
-            return false
-        }
-
-        // Check that glucose was within 4.0-11.0 mmol/L (72-198 mg/dL) for at least 3 hours
-        if !isGlucoseInRangeForMinimumDuration(
-            glucoseSamples: glucoseInWindow,
+        return BasalAnalysisWindow(
             measurementStart: measurementStart,
             measurementEnd: measurementEnd,
-            minimumDuration: 3 * .hours(1)
-        ) {
-            return false
-        }
-
-        return true
+            carbFreeStart: carbFreeStart,
+            activeDoses: activeDoses
+        )
     }
 
     /// Check if glucose was within the target range (4.0-11.0 mmol/L) for at least the specified duration
@@ -282,7 +598,8 @@ class SettingsRecommendationManager {
 
     private func generateRecommendations(
         from windows: [BasalAnalysisWindow],
-        glucoseSamples: [StoredGlucoseSample]
+        glucoseSamples: [StoredGlucoseSample],
+        doseEntries: [DoseEntry]
     ) -> [BasalRateRecommendation] {
         // Split day into 6 periods of 4 hours each
         let periodHours = 4
@@ -309,8 +626,8 @@ class SettingsRecommendationManager {
 
             if periodWindows.isEmpty {
                 // No data for this period - create a recommendation indicating insufficient data
-                let sampleDate = periodStartDate
-                let currentBasal = settings().basalRateSchedule?.value(at: sampleDate) ?? 0.0
+                // Use current basal rate as reference since we have no historical data
+                let currentBasal = settings().basalRateSchedule?.value(at: periodStartDate) ?? 0.0
 
                 let recommendation = BasalRateRecommendation(
                     startDate: periodStartDate,
@@ -322,13 +639,16 @@ class SettingsRecommendationManager {
                     startGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0),
                     endGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 0),
                     confidence: 0,
-                    sampleCount: 0
+                    sampleCount: 0,
+                    qualifyingWindows: []
                 )
                 recommendations.append(recommendation)
                 continue
             }
 
-            var totalTrend: Double = 0
+            var totalAbsorbedInsulin: Double = 0
+            var totalGlucoseChange: Double = 0
+            var totalDurationHours: Double = 0
             var validWindowCount = 0
             var startGlucoseValues: [HKQuantity] = []
             var endGlucoseValues: [HKQuantity] = []
@@ -341,39 +661,63 @@ class SettingsRecommendationManager {
                 guard let firstGlucose = windowGlucose.first,
                       let lastGlucose = windowGlucose.last else { continue }
 
-                // Calculate trend (mg/dL per hour)
-                let glucoseChange = lastGlucose.quantity.doubleValue(for: .milligramsPerDeciliter) -
+                // Calculate observed glucose change
+                let observedGlucoseChange = lastGlucose.quantity.doubleValue(for: .milligramsPerDeciliter) -
                                   firstGlucose.quantity.doubleValue(for: .milligramsPerDeciliter)
-                let durationHours = window.duration / .hours(1)
-                let trend = glucoseChange / durationHours
 
-                totalTrend += trend
+                // Calculate total insulin absorbed during this window
+                // This includes basal, temp basal, and any bolus absorption
+                let absorbedInsulin = calculateAbsorbedInsulin(
+                    doseEntries: doseEntries,
+                    periodStart: window.measurementStart,
+                    periodEnd: window.measurementEnd
+                )
+
+                let durationHours = window.duration / .hours(1)
+
+                totalAbsorbedInsulin += absorbedInsulin
+                totalGlucoseChange += observedGlucoseChange
+                totalDurationHours += durationHours
                 validWindowCount += 1
                 startGlucoseValues.append(firstGlucose.quantity)
                 endGlucoseValues.append(lastGlucose.quantity)
             }
 
-            let averageTrend = validWindowCount > 0 ? totalTrend / Double(validWindowCount) : 0
+            // Get current basal rate setting for this time period
+            let currentBasal = settings().basalRateSchedule?.value(at: periodStartDate) ?? 0.0
 
-            // Get average basal rate for this period (sample at the start of the period)
-            let sampleDate = periodStartDate
-            let currentBasal = settings().basalRateSchedule?.value(at: sampleDate) ?? 0.0
+            // Calculate average insulin per hour and glucose change per hour
+            let avgAbsorbedInsulinPerHour = totalDurationHours > 0 ? totalAbsorbedInsulin / totalDurationHours : 0
+            let avgGlucoseChangePerHour = totalDurationHours > 0 ? totalGlucoseChange / totalDurationHours : 0
 
-            // Calculate recommended adjustment
-            // Rule of thumb: ~1 mg/dL/hour change suggests ~0.05 U/hr adjustment needed
-            // Positive trend (rising glucose) = need more insulin
-            // Negative trend (falling glucose) = need less insulin
-            let basalAdjustment = averageTrend * 0.05 / 10.0
-            let rawRecommendedBasal = currentBasal + basalAdjustment
+            // Calculate the recommended basal based on absorbed insulin and glucose trend
+            // If glucose is stable (change near 0), then absorbed insulin rate is appropriate
+            // If glucose is rising, need more insulin
+            // If glucose is falling, need less insulin
+
+            // We need to find the basal rate that would have kept glucose stable
+            // Since we absorbed X insulin per hour and glucose changed by Y mg/dL/hr,
+            // we can estimate that we need to adjust the insulin by a factor
+
+            // Simple heuristic: For every 50 mg/dL/hr change, adjust insulin by 10%
+            // This avoids using ISF while still being responsive to glucose changes
+            let glucoseFactor = 1.0 + (avgGlucoseChangePerHour / 500.0)
+            let idealInsulinRate = avgAbsorbedInsulinPerHour * glucoseFactor
+
+            // Use current basal as reference point
+            let rawRecommendedBasal = idealInsulinRate
 
             // If change is less than half the minimum step (0.025 U/hr), keep current basal
             let recommendedBasal: Double
-            if abs(basalAdjustment) < 0.025 {
+            if abs(rawRecommendedBasal - currentBasal) < 0.025 {
                 recommendedBasal = currentBasal
             } else {
                 // Round to nearest 0.05 U/hr step
                 recommendedBasal = max(0, round(rawRecommendedBasal / 0.05) * 0.05)
             }
+
+            // Calculate average trend for display
+            let averageTrend = avgGlucoseChangePerHour
 
             // Calculate confidence based on sample count and trend consistency
             let confidence = min(1.0, Double(validWindowCount) / 10.0)
@@ -410,12 +754,139 @@ class SettingsRecommendationManager {
                 startGlucose: avgStart,
                 endGlucose: avgEnd,
                 confidence: confidence,
-                sampleCount: validWindowCount
+                sampleCount: validWindowCount,
+                qualifyingWindows: periodWindows
             )
 
             recommendations.append(recommendation)
         }
 
         return recommendations
+    }
+
+    /// Calculate the average scheduled basal rate that was actually delivered during a period
+    /// This uses .basal type dose entries to determine what the scheduled basal rate was
+    /// Returns the average basal rate in U/hr, or nil if no basal data available
+    private func calculateAverageScheduledBasalRate(
+        doseEntries: [DoseEntry],
+        start: Date,
+        end: Date
+    ) -> Double? {
+        // Filter for .basal doses that overlap with this period
+        let basalDoses = doseEntries.filter { dose in
+            dose.type == .basal &&
+            dose.startDate < end &&
+            dose.endDate > start
+        }
+
+        guard !basalDoses.isEmpty else {
+            return nil
+        }
+
+        // Calculate weighted average based on duration of each basal segment
+        var totalInsulin: Double = 0
+        var totalDuration: TimeInterval = 0
+
+        for dose in basalDoses {
+            // Calculate overlap between dose and measurement period
+            let overlapStart = max(dose.startDate, start)
+            let overlapEnd = min(dose.endDate, end)
+            let overlapDuration = overlapEnd.timeIntervalSince(overlapStart)
+
+            if overlapDuration > 0 {
+                let insulinDelivered = dose.unitsPerHour * (overlapDuration / .hours(1))
+                totalInsulin += insulinDelivered
+                totalDuration += overlapDuration
+            }
+        }
+
+        guard totalDuration > 0 else {
+            return nil
+        }
+
+        // Calculate average rate
+        return totalInsulin / (totalDuration / .hours(1))
+    }
+
+    /// Calculate the total insulin absorbed during a measurement period
+    /// This includes basal, temp basal, and any bolus insulin that was absorbed during the period
+    /// Uses insulin absorption model to account for insulin given before the period
+    private func calculateAbsorbedInsulin(
+        doseEntries: [DoseEntry],
+        periodStart: Date,
+        periodEnd: Date
+    ) -> Double {
+        let insulinActionDuration: TimeInterval = 6 * .hours(1)
+        var totalAbsorbed: Double = 0
+
+        // Look back to include any insulin doses that could still be absorbing during the period
+        let lookbackStart = periodStart.addingTimeInterval(-insulinActionDuration)
+
+        let relevantDoses = doseEntries.filter { dose in
+            dose.endDate > lookbackStart && dose.startDate < periodEnd
+        }
+
+        for dose in relevantDoses {
+            switch dose.type {
+            case .bolus:
+                // Calculate how much of the bolus was absorbed during the period
+                let bolusAbsorbed = calculateBolusAbsorption(
+                    bolusAmount: dose.programmedUnits,
+                    bolusTime: dose.startDate,
+                    periodStart: periodStart,
+                    periodEnd: periodEnd,
+                    insulinActionDuration: insulinActionDuration
+                )
+                totalAbsorbed += bolusAbsorbed
+
+            case .basal, .tempBasal:
+                // Calculate basal/temp basal delivered during the period
+                let overlapStart = max(dose.startDate, periodStart)
+                let overlapEnd = min(dose.endDate, periodEnd)
+
+                if overlapStart < overlapEnd {
+                    let overlapDuration = overlapEnd.timeIntervalSince(overlapStart) / .hours(1)
+                    let insulinDelivered = dose.unitsPerHour * overlapDuration
+                    totalAbsorbed += insulinDelivered
+                }
+
+            case .suspend:
+                // No insulin during suspension
+                break
+
+            case .resume:
+                // Resume is just a marker, no insulin
+                break
+            }
+        }
+
+        return totalAbsorbed
+    }
+
+    /// Calculate how much of a bolus was absorbed during a specific period
+    /// Uses linear absorption model for simplicity
+    private func calculateBolusAbsorption(
+        bolusAmount: Double,
+        bolusTime: Date,
+        periodStart: Date,
+        periodEnd: Date,
+        insulinActionDuration: TimeInterval
+    ) -> Double {
+        let bolusEnd = bolusTime.addingTimeInterval(insulinActionDuration)
+
+        // If bolus is completely before period or completely after, no absorption
+        guard bolusTime < periodEnd && bolusEnd > periodStart else {
+            return 0
+        }
+
+        // Calculate what fraction of the bolus absorption happened during the period
+        let absorptionStart = max(bolusTime, periodStart)
+        let absorptionEnd = min(bolusEnd, periodEnd)
+        let periodAbsorptionDuration = absorptionEnd.timeIntervalSince(absorptionStart)
+
+        // Linear absorption model: insulin absorbs evenly over the action duration
+        let fractionAbsorbed = periodAbsorptionDuration / insulinActionDuration
+
+        return bolusAmount * fractionAbsorbed
     }
 }

@@ -70,10 +70,10 @@ public struct BasalRateRecommendationsView: View {
                         .foregroundColor(.secondary)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        bulletPoint("No active carbs during measurement period")
-                        bulletPoint("No active insulin during measurement period")
-                        bulletPoint("Glucose within 4.0-11.0 mmol/L for 3+ hours")
-                        bulletPoint("Sufficient glucose readings available")
+                        bulletPoint("No active carbs (>1g) during the period")
+                        bulletPoint("No recent lows (<4.0 mmol/L) within 8 hours before")
+                        bulletPoint("Low active insulin (IOB <0.5 U) at period start")
+                        bulletPoint("Glucose within 4.0-13.0 mmol/L for 2+ hours")
                     }
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -87,7 +87,17 @@ public struct BasalRateRecommendationsView: View {
                 if !viewModel.recommendations.isEmpty {
                     VStack(spacing: 16) {
                         ForEach(viewModel.recommendations) { recommendation in
-                            recommendationCard(recommendation)
+                            if recommendation.sampleCount > 0 {
+                                NavigationLink(destination: PeriodsListView(
+                                    recommendation: recommendation,
+                                    viewModel: viewModel
+                                )) {
+                                    recommendationCard(recommendation)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            } else {
+                                recommendationCard(recommendation)
+                            }
                         }
                     }
                     .padding(.horizontal)
@@ -100,7 +110,7 @@ public struct BasalRateRecommendationsView: View {
                         Text("No recommendations available")
                             .font(.headline)
 
-                        Text("Not enough qualifying data periods found. Try again after collecting more data with stable basals, no active carbs/insulin, and glucose in range.")
+                        Text("Not enough qualifying data periods found. Try again after collecting more data with no active carbs and glucose in range.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
