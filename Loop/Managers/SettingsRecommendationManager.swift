@@ -20,7 +20,7 @@ class SettingsRecommendationManager {
     private let logger = Logger(subsystem: "com.loopkit.Loop", category: "SettingsRecommendationManager")
 
     // Analysis parameters
-    private let minimumMeasurementHours: TimeInterval = 3 * .hours(1)
+    private let minimumMeasurementHours: TimeInterval = 2 * .hours(1)
     private let analysisWindowStride: TimeInterval = 5 * 60 // Check every 5 minutes for continuous periods
 
     init(glucoseStore: GlucoseStoreProtocol,
@@ -228,6 +228,10 @@ class SettingsRecommendationManager {
         var currentPeriodStart: Date?
         var currentDate = startDate
 
+        // Track periods that were interrupted by recent lows
+        // We'll check these later and add back ones with falling trends
+        var lowInterruptedPeriods: [(start: Date, end: Date)] = []
+
         // Cache for glucose index to avoid re-searching
         var glucoseSearchStartIndex = 0
         var carbCheckIndex = 0
@@ -246,7 +250,9 @@ class SettingsRecommendationManager {
 
             if hasRecentLow {
                 if let periodStart = currentPeriodStart {
-                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, &windows, &debugPeriods)
+                    // Save this period as interrupted by low
+                    lowInterruptedPeriods.append((start: periodStart, end: currentDate))
+                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, glucoseSamples: sortedGlucose, &windows, &debugPeriods)
                     currentPeriodStart = nil
                 }
                 currentDate = currentDate.addingTimeInterval(analysisWindowStride)
@@ -268,7 +274,7 @@ class SettingsRecommendationManager {
 
             if hasActiveCarbs {
                 if let periodStart = currentPeriodStart {
-                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, &windows, &debugPeriods)
+                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, glucoseSamples: sortedGlucose, &windows, &debugPeriods)
                     currentPeriodStart = nil
                 }
                 currentDate = currentDate.addingTimeInterval(analysisWindowStride)
@@ -284,7 +290,7 @@ class SettingsRecommendationManager {
 
             if abs(iob) > 0.5 {
                 if let periodStart = currentPeriodStart {
-                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, &windows, &debugPeriods)
+                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, glucoseSamples: sortedGlucose, &windows, &debugPeriods)
                     currentPeriodStart = nil
                 }
                 currentDate = currentDate.addingTimeInterval(analysisWindowStride)
@@ -300,7 +306,7 @@ class SettingsRecommendationManager {
 
             guard let glucose = glucoseCheck.glucose, glucoseCheck.inRange else {
                 if let periodStart = currentPeriodStart {
-                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, &windows, &debugPeriods)
+                    finalizePeriod(periodStart, currentDate, doseEntries: doseEntries, glucoseSamples: sortedGlucose, &windows, &debugPeriods)
                     currentPeriodStart = nil
                 }
                 currentDate = currentDate.addingTimeInterval(analysisWindowStride)
@@ -317,7 +323,73 @@ class SettingsRecommendationManager {
 
         // Finalize any remaining period
         if let periodStart = currentPeriodStart {
-            finalizePeriod(periodStart, endDate, doseEntries: doseEntries, &windows, &debugPeriods)
+            finalizePeriod(periodStart, endDate, doseEntries: doseEntries, glucoseSamples: sortedGlucose, &windows, &debugPeriods)
+        }
+
+        // Second pass: Check periods that were interrupted by recent lows
+        // If they have falling trends (glucose decreasing), add them back
+        // This allows us to reduce basal even after a recent low
+        print("🔍 Checking \(lowInterruptedPeriods.count) low-interrupted periods for falling trends")
+        for period in lowInterruptedPeriods {
+            let duration = period.end.timeIntervalSince(period.start)
+            let formatter = DateFormatter()
+            formatter.dateFormat = "HH:mm"
+            print("  Period: \(formatter.string(from: period.start)) - \(formatter.string(from: period.end)), duration: \(String(format: "%.1f", duration / .hours(1)))h")
+
+            // Only consider periods that meet minimum duration
+            guard duration >= minimumMeasurementHours else {
+                print("  ⏭️  Too short, skipping")
+                continue
+            }
+
+            // Check if trend is falling
+            let periodGlucose = sortedGlucose.filter { sample in
+                sample.startDate >= period.start && sample.startDate <= period.end
+            }.sorted { $0.startDate < $1.startDate }
+
+            guard let firstGlucose = periodGlucose.first,
+                  let lastGlucose = periodGlucose.last else {
+                print("  ⏭️  No glucose data, skipping")
+                continue
+            }
+
+            let glucoseChange = lastGlucose.quantity.doubleValue(for: .milligramsPerDeciliter) -
+                              firstGlucose.quantity.doubleValue(for: .milligramsPerDeciliter)
+            let durationHours = duration / .hours(1)
+            let trend = durationHours > 0 ? glucoseChange / durationHours : 0
+
+            print("  Trend: \(String(format: "%.1f", trend)) mg/dL/hr")
+
+            // Only add back if falling (negative trend)
+            if trend < 0 {
+                print("  ✅ Falling trend! Checking linearity...")
+
+                // Check linearity
+                let isLinear = isGlucoseTrendLinear(
+                    glucoseSamples: sortedGlucose,
+                    measurementStart: period.start,
+                    measurementEnd: period.end
+                )
+
+                if isLinear {
+                    print("  ✅ Linear! Adding period back")
+                    let activeDoses = collectActiveDoses(
+                        doseEntries: doseEntries,
+                        measurementStart: period.start,
+                        measurementEnd: period.end
+                    )
+                    windows.append(BasalAnalysisWindow(
+                        measurementStart: period.start,
+                        measurementEnd: period.end,
+                        carbFreeStart: period.start,
+                        activeDoses: activeDoses
+                    ))
+                } else {
+                    print("  ❌ Not linear, skipping")
+                }
+            } else {
+                print("  ⏭️  Rising/stable trend, skipping")
+            }
         }
 
         return (windows, debugPeriods)
@@ -327,31 +399,50 @@ class SettingsRecommendationManager {
         _ periodStart: Date,
         _ periodEnd: Date,
         doseEntries: [DoseEntry],
+        glucoseSamples: [StoredGlucoseSample],
         _ windows: inout [BasalAnalysisWindow],
         _ debugPeriods: inout [PeriodAnalysisDebug]
     ) {
         let duration = periodEnd.timeIntervalSince(periodStart)
 
         if duration >= minimumMeasurementHours {
-            // Valid period - add to windows
-            let activeDoses = collectActiveDoses(
-                doseEntries: doseEntries,
+            // Check if glucose trend is linear
+            let isLinear = isGlucoseTrendLinear(
+                glucoseSamples: glucoseSamples,
                 measurementStart: periodStart,
                 measurementEnd: periodEnd
             )
-            windows.append(BasalAnalysisWindow(
-                measurementStart: periodStart,
-                measurementEnd: periodEnd,
-                carbFreeStart: periodStart,
-                activeDoses: activeDoses
-            ))
-            debugPeriods.append(PeriodAnalysisDebug(
-                measurementStart: periodStart,
-                measurementEnd: periodEnd,
-                duration: duration,
-                isValid: true,
-                rejectionReasons: []
-            ))
+
+            if isLinear {
+                // Valid period - add to windows
+                let activeDoses = collectActiveDoses(
+                    doseEntries: doseEntries,
+                    measurementStart: periodStart,
+                    measurementEnd: periodEnd
+                )
+                windows.append(BasalAnalysisWindow(
+                    measurementStart: periodStart,
+                    measurementEnd: periodEnd,
+                    carbFreeStart: periodStart,
+                    activeDoses: activeDoses
+                ))
+                debugPeriods.append(PeriodAnalysisDebug(
+                    measurementStart: periodStart,
+                    measurementEnd: periodEnd,
+                    duration: duration,
+                    isValid: true,
+                    rejectionReasons: []
+                ))
+            } else {
+                // Non-linear trend - reject
+                debugPeriods.append(PeriodAnalysisDebug(
+                    measurementStart: periodStart,
+                    measurementEnd: periodEnd,
+                    duration: duration,
+                    isValid: false,
+                    rejectionReasons: ["Non-linear glucose trend (peak or valley detected)"]
+                ))
+            }
         } else if duration > 0 {
             // Too short - add to debug only
             debugPeriods.append(PeriodAnalysisDebug(
@@ -834,6 +925,18 @@ class SettingsRecommendationManager {
                 continue
             }
 
+            // Deduplicate windows based on measurementStart and measurementEnd to ensure
+            // each qualifying period is only counted once in the calculations
+            let uniqueWindows = overlappingWindows.reduce(into: [BasalAnalysisWindow]()) { result, window in
+                let isDuplicate = result.contains { existing in
+                    existing.measurementStart == window.measurementStart &&
+                    existing.measurementEnd == window.measurementEnd
+                }
+                if !isDuplicate {
+                    result.append(window)
+                }
+            }
+
             var totalAbsorbedInsulin: Double = 0
             var totalGlucoseChange: Double = 0
             var totalDurationHours: Double = 0
@@ -841,7 +944,7 @@ class SettingsRecommendationManager {
             var startGlucoseValues: [HKQuantity] = []
             var endGlucoseValues: [HKQuantity] = []
 
-            for window in overlappingWindows {
+            for window in uniqueWindows {
                 let windowGlucose = glucoseSamples.filter { sample in
                     sample.startDate >= window.measurementStart && sample.startDate <= window.measurementEnd
                 }.sorted { $0.startDate < $1.startDate }
@@ -878,30 +981,52 @@ class SettingsRecommendationManager {
             let avgAbsorbedInsulinPerHour = totalDurationHours > 0 ? totalAbsorbedInsulin / totalDurationHours : 0
             let avgGlucoseChangePerHour = totalDurationHours > 0 ? totalGlucoseChange / totalDurationHours : 0
 
+            print("🔍 Basal calculation for segment \(segmentStart):")
+            print("   Absorbed insulin: \(String(format: "%.2f", avgAbsorbedInsulinPerHour)) U/hr")
+            print("   Glucose change: \(String(format: "%.2f", avgGlucoseChangePerHour)) mg/dL/hr")
+            print("   Current basal: \(String(format: "%.2f", currentBasal)) U/hr")
+
             // Calculate the recommended basal based on absorbed insulin and glucose trend
-            // If glucose is stable (change near 0), then absorbed insulin rate is appropriate
-            // If glucose is rising, need more insulin
-            // If glucose is falling, need less insulin
+            // The logic:
+            // - The absorbed insulin rate represents what was actually delivered during the qualifying period
+            // - If glucose was stable, that absorption rate was appropriate
+            // - If glucose was falling, we had too much insulin → recommend less
+            // - If glucose was rising, we had too little insulin → recommend more
+            //
+            // Use ISF (Insulin Sensitivity Factor) to calculate the adjustment:
+            // - If glucose is falling at X mmol/L/hr and ISF = Y mmol/L/U
+            // - Then we have (X / Y) U/hr excess insulin
+            // - Recommended basal = absorbed insulin - (X / Y)
 
-            // We need to find the basal rate that would have kept glucose stable
-            // Since we absorbed X insulin per hour and glucose changed by Y mg/dL/hr,
-            // we can estimate that we need to adjust the insulin by a factor
+            // Get ISF from settings (use value at segment start time)
+            let isfSchedule = settings().insulinSensitivitySchedule
+            let isfValue = isfSchedule?.quantity(at: segmentStart) ?? HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 50.0)
+            let isfInMmolPerU = isfValue.doubleValue(for: .millimolesPerLiter)
 
-            // Simple heuristic: For every 50 mg/dL/hr change, adjust insulin by 10%
-            // This avoids using ISF while still being responsive to glucose changes
-            let glucoseFactor = 1.0 + (avgGlucoseChangePerHour / 500.0)
-            let idealInsulinRate = avgAbsorbedInsulinPerHour * glucoseFactor
+            print("   ISF: \(String(format: "%.1f", isfInMmolPerU)) mmol/L/U")
 
-            // Use current basal as reference point
-            let rawRecommendedBasal = idealInsulinRate
+            // Convert glucose change to mmol/L/hr
+            let avgGlucoseChangeInMmol = avgGlucoseChangePerHour / 18.0
+
+            // Calculate insulin adjustment needed
+            // If falling: glucose change is negative, so insulinAdjustment is negative (reduce basal)
+            // If rising: glucose change is positive, so insulinAdjustment is positive (increase basal)
+            let insulinAdjustment = avgGlucoseChangeInMmol / isfInMmolPerU
+            let rawRecommendedBasal = avgAbsorbedInsulinPerHour + insulinAdjustment
+
+            print("   Glucose change: \(String(format: "%.2f", avgGlucoseChangeInMmol)) mmol/L/hr")
+            print("   Insulin adjustment: \(String(format: "%.3f", insulinAdjustment)) U/hr")
+            print("   Raw recommended: \(String(format: "%.2f", rawRecommendedBasal)) U/hr")
 
             // If change is less than half the minimum step (0.025 U/hr), keep current basal
             let recommendedBasal: Double
             if abs(rawRecommendedBasal - currentBasal) < 0.025 {
+                print("   Difference < 0.025, keeping current basal")
                 recommendedBasal = currentBasal
             } else {
-                // Round to nearest 0.05 U/hr step
-                recommendedBasal = max(0, round(rawRecommendedBasal / 0.05) * 0.05)
+                // Floor to 0.05 U/hr step (always round down for safety)
+                recommendedBasal = max(0, floor(rawRecommendedBasal / 0.05) * 0.05)
+                print("   Recommended (floored): \(String(format: "%.2f", recommendedBasal)) U/hr")
             }
 
             // Calculate average trend for display
@@ -946,7 +1071,7 @@ class SettingsRecommendationManager {
                 endGlucose: avgEnd,
                 confidence: confidence,
                 sampleCount: validWindowCount,
-                qualifyingWindows: overlappingWindows
+                qualifyingWindows: uniqueWindows
             )
 
             recommendations.append(recommendation)
@@ -1026,7 +1151,18 @@ class SettingsRecommendationManager {
 
         // Aggregate statistics from all hours in the group
         let totalSampleCount = group.reduce(0) { $0 + $1.sampleCount }
+
+        // Deduplicate windows based on measurementStart and measurementEnd
         let allWindows = group.flatMap { $0.qualifyingWindows }
+        let uniqueWindows = allWindows.reduce(into: [BasalAnalysisWindow]()) { result, window in
+            let isDuplicate = result.contains { existing in
+                existing.measurementStart == window.measurementStart &&
+                existing.measurementEnd == window.measurementEnd
+            }
+            if !isDuplicate {
+                result.append(window)
+            }
+        }
 
         // Weight averages by sample count
         var weightedTrend: Double = 0
@@ -1064,9 +1200,149 @@ class SettingsRecommendationManager {
             startGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: avgStartGlucose),
             endGlucose: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: avgEndGlucose),
             confidence: avgConfidence,
-            sampleCount: totalSampleCount,
-            qualifyingWindows: allWindows
+            sampleCount: uniqueWindows.count,  // Use deduplicated count
+            qualifyingWindows: uniqueWindows
         )
+    }
+
+    /// Performs simple linear regression on glucose values over time
+    /// Returns (slope, intercept) or nil if calculation fails
+    private func linearRegression(times: [TimeInterval], values: [Double]) -> (slope: Double, intercept: Double)? {
+        guard times.count == values.count, times.count >= 2 else { return nil }
+
+        let n = Double(times.count)
+        let sumX = times.reduce(0, +)
+        let sumY = values.reduce(0, +)
+        let sumXY = zip(times, values).map(*).reduce(0, +)
+        let sumXX = times.map { $0 * $0 }.reduce(0, +)
+
+        let denominator = n * sumXX - sumX * sumX
+        guard abs(denominator) > 0.0001 else { return nil }
+
+        let slope = (n * sumXY - sumX * sumY) / denominator
+        let intercept = (sumY - slope * sumX) / n
+
+        return (slope, intercept)
+    }
+
+    /// Checks if glucose data shows a linear trend (no significant peaks or valleys in the middle)
+    /// Returns true if the trend is sufficiently linear
+    private func isGlucoseTrendLinear(
+        glucoseSamples: [StoredGlucoseSample],
+        measurementStart: Date,
+        measurementEnd: Date
+    ) -> Bool {
+        // Get glucose samples within the measurement period
+        let samples = glucoseSamples.filter { sample in
+            sample.startDate >= measurementStart && sample.startDate <= measurementEnd
+        }.sorted { $0.startDate < $1.startDate }
+
+        guard samples.count >= 4 else {
+            // Not enough points to assess linearity - accept it
+            print("⚪️ Linearity check: Not enough samples (\(samples.count)) - accepting")
+            return true
+        }
+
+        // Convert to time offsets and glucose values
+        let startTime = samples[0].startDate.timeIntervalSince1970
+        let times = samples.map { $0.startDate.timeIntervalSince1970 - startTime }
+        let values = samples.map { $0.quantity.doubleValue(for: .milligramsPerDeciliter) }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        print("📊 Linearity check for \(formatter.string(from: measurementStart)) - \(formatter.string(from: measurementEnd))")
+        print("   Glucose values: \(values.map { String(format: "%.0f", $0) }.joined(separator: ", "))")
+
+        // Perform linear regression
+        guard let (slope, intercept) = linearRegression(times: times, values: values) else {
+            print("⚪️ Linear regression failed - accepting")
+            return true // Can't determine - accept it
+        }
+
+        print("   Slope: \(String(format: "%.2f", slope * 3600)) mg/dL/hr")
+
+        // Calculate residuals (actual - predicted)
+        let residuals = zip(times, values).map { time, value in
+            let predicted = slope * time + intercept
+            return value - predicted
+        }
+
+        // Skip first and last points (edges are less reliable)
+        let middleResiduals = Array(residuals.dropFirst().dropLast())
+        guard middleResiduals.count >= 2 else {
+            print("⚪️ Not enough middle residuals - accepting")
+            return true
+        }
+
+        // Calculate standard deviation of residuals
+        let meanResidual = middleResiduals.reduce(0, +) / Double(middleResiduals.count)
+        let variance = middleResiduals.map { pow($0 - meanResidual, 2) }.reduce(0, +) / Double(middleResiduals.count)
+        let stdDev = sqrt(variance)
+
+        guard stdDev > 0 else {
+            print("⚪️ StdDev is zero - accepting")
+            return true
+        }
+
+        print("   Residuals: \(middleResiduals.map { String(format: "%.1f", $0) }.joined(separator: ", "))")
+        print("   StdDev: \(String(format: "%.1f", stdDev))")
+
+        // Better approach: Detect U-shapes and ∩-shapes by looking at residual trends
+        // Split residuals into three sections: beginning, middle, end
+        let n = middleResiduals.count
+        let section1End = n / 3
+        let section2End = 2 * n / 3
+
+        let section1 = Array(middleResiduals[0..<section1End])
+        let section2 = Array(middleResiduals[section1End..<section2End])
+        let section3 = Array(middleResiduals[section2End..<n])
+
+        let avg1 = section1.isEmpty ? 0 : section1.reduce(0, +) / Double(section1.count)
+        let avg2 = section2.isEmpty ? 0 : section2.reduce(0, +) / Double(section2.count)
+        let avg3 = section3.isEmpty ? 0 : section3.reduce(0, +) / Double(section3.count)
+
+        print("   Section averages: [\(String(format: "%.1f", avg1)), \(String(format: "%.1f", avg2)), \(String(format: "%.1f", avg3))]")
+
+        // Detect U-shape or n-shape (inverted U): Look for systematic pattern where
+        // the middle section is opposite in sign to the edges
+
+        // Key requirements:
+        // 1. Both edges must have the same sign (both pos or both neg)
+        // 2. Middle must be opposite sign
+        // 3. Middle must be substantially larger in magnitude (not just noise)
+
+        let edgesNegative = avg1 < 0 && avg3 < 0
+        let edgesPositive = avg1 > 0 && avg3 > 0
+        let edgesSameSign = edgesNegative || edgesPositive
+
+        // For a true curvature pattern, the middle should be substantial (not just noise)
+        // Use absolute threshold: at least 0.5 * stdDev AND at least 5 mg/dL
+        let minMagnitude = max(0.5 * stdDev, 5.0)
+
+        let middleOpposite = (edgesNegative && avg2 > minMagnitude) || (edgesPositive && avg2 < -minMagnitude)
+
+        // Middle must be significantly more extreme than edges
+        let edgeAvg = (abs(avg1) + abs(avg3)) / 2.0
+
+        // Require middle to be both:
+        // - At least 1.5x the average of edges (relative check)
+        // - At least 8 mg/dL different from edge average (absolute check)
+        let relativeDiff = abs(avg2) > 1.5 * edgeAvg
+        let absoluteDiff = abs(avg2) - edgeAvg > 8.0
+        let middleSignificantlyDifferent = relativeDiff && absoluteDiff
+
+        let hasCurvature = edgesSameSign && middleOpposite && middleSignificantlyDifferent
+
+        print("   Edges same sign: \(edgesSameSign), middle opposite: \(middleOpposite), middle significantly different: \(middleSignificantlyDifferent)")
+        print("   Has curvature: \(hasCurvature)")
+
+        if hasCurvature {
+            print("❌ Rejected: Non-linear curve detected (n-shape or U-shape)")
+            return false
+        }
+
+        print("✅ Accepted: Linear trend")
+        return true
     }
 
     /// Calculate the average scheduled basal rate that was actually delivered during a period
