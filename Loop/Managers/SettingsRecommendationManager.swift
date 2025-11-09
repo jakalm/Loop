@@ -34,7 +34,7 @@ class SettingsRecommendationManager {
     }
 
     /// Generate basal rate recommendations based on historical data
-    func generateBasalRateRecommendations(daysToAnalyze: Int, completion: @escaping ([BasalRateRecommendation]) -> Void) {
+    func generateBasalRateRecommendations(daysToAnalyze: Int, completion: @escaping ([BasalRateRecommendation], [RejectedPeriod]) -> Void) {
         let endDate = Date()
         let startDate = endDate.addingTimeInterval(-TimeInterval(daysToAnalyze) * .hours(24))
 
@@ -42,7 +42,7 @@ class SettingsRecommendationManager {
         fetchAnalysisData(from: startDate, to: endDate) { result in
             switch result {
             case .success(let data):
-                let (windows, _) = self.identifyValidAnalysisWindows(
+                let (windows, debugInfo) = self.identifyValidAnalysisWindows(
                     glucoseSamples: data.glucoseSamples,
                     carbEntries: data.carbEntries,
                     doseEntries: data.doseEntries,
@@ -55,11 +55,24 @@ class SettingsRecommendationManager {
                     glucoseSamples: data.glucoseSamples,
                     doseEntries: data.doseEntries
                 )
-                completion(recommendations)
+
+                // Convert debug periods to rejected periods (filter out valid ones)
+                let rejectedPeriods = debugInfo.analyzedPeriods
+                    .filter { !$0.isValid }
+                    .map { debug in
+                        RejectedPeriod(
+                            measurementStart: debug.measurementStart,
+                            measurementEnd: debug.measurementEnd,
+                            duration: debug.duration,
+                            rejectionReasons: debug.rejectionReasons
+                        )
+                    }
+
+                completion(recommendations, rejectedPeriods)
 
             case .failure(let error):
                 self.logger.error("Failed to fetch analysis data: \(String(describing: error))")
-                completion([])
+                completion([], [])
             }
         }
     }

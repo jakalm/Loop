@@ -62,7 +62,8 @@ public class CarbRatioRecommendationsViewModel: ObservableObject {
         recommendationManager.generateCarbRatioRecommendations(daysToAnalyze: selectedDays) { [weak self] newRecommendations, newRejectedMeals in
             DispatchQueue.main.async {
                 self?.recommendations = newRecommendations
-                self?.rejectedMeals = newRejectedMeals
+                // Sort rejected meals in reverse chronological order (latest first)
+                self?.rejectedMeals = newRejectedMeals.sorted { $0.carbEntryTime > $1.carbEntryTime }
                 self?.isAnalyzing = false
             }
         }

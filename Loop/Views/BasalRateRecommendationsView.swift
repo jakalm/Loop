@@ -10,10 +10,13 @@ import SwiftUI
 import HealthKit
 import LoopKit
 import LoopKitUI
+import LoopUI
+import SwiftCharts
 
 public struct BasalRateRecommendationsView: View {
     @StateObject private var viewModel: BasalRateRecommendationsViewModel
     @EnvironmentObject private var displayGlucosePreference: DisplayGlucosePreference
+    @State private var showAllRejectedPeriods = false
 
     public init(viewModel: BasalRateRecommendationsViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -119,6 +122,60 @@ public struct BasalRateRecommendationsView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
                 }
+
+                // Debug: Show rejected periods
+                if !viewModel.rejectedPeriods.isEmpty {
+                    Divider()
+                        .padding(.vertical)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Debug: Rejected Periods (\(viewModel.rejectedPeriods.count))")
+                            .font(.headline)
+
+                        let periodsToShow = showAllRejectedPeriods ? viewModel.rejectedPeriods : Array(viewModel.rejectedPeriods.prefix(10))
+
+                        ForEach(periodsToShow) { rejected in
+                            NavigationLink(destination: RejectedPeriodDetailView(
+                                rejected: rejected,
+                                viewModel: viewModel
+                            )) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(formatPeriodTime(rejected.measurementStart))
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+
+                                    Text("Duration: \(String(format: "%.1f", rejected.durationHours)) hours")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+
+                                    Text("Rejected: \(rejected.rejectionSummary)")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding()
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(10)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+
+                        if viewModel.rejectedPeriods.count > 10 {
+                            Button(action: {
+                                showAllRejectedPeriods.toggle()
+                            }) {
+                                HStack {
+                                    Image(systemName: showAllRejectedPeriods ? "chevron.up" : "chevron.down")
+                                    Text(showAllRejectedPeriods ? "Show less" : "Show \(viewModel.rejectedPeriods.count - 10) more")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .padding(.top, 4)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
             }
             .padding(.vertical)
         }
@@ -131,6 +188,13 @@ public struct BasalRateRecommendationsView: View {
                 viewModel.refreshRecommendations()
             }
         }
+    }
+
+    private func formatPeriodTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 
     private func bulletPoint(_ text: String) -> some View {
@@ -348,5 +412,321 @@ public struct BasalRateRecommendationsView: View {
         let percentage = abs(recommendation.changePercentage)
 
         return String(format: "%@ by %.2f U/hr (%.0f%%)", action, amount, percentage)
+    }
+}
+
+// MARK: - Rejected Period Detail View
+
+struct RejectedPeriodDetailView: View {
+    let rejected: RejectedPeriod
+    let viewModel: BasalRateRecommendationsViewModel
+
+    @StateObject private var detailViewModel: RejectedPeriodDetailViewModel
+    @EnvironmentObject private var displayGlucosePreference: DisplayGlucosePreference
+
+    init(rejected: RejectedPeriod, viewModel: BasalRateRecommendationsViewModel) {
+        self.rejected = rejected
+        self.viewModel = viewModel
+        let vm = RejectedPeriodDetailViewModel(
+            rejected: rejected,
+            glucoseStore: viewModel.glucoseStore,
+            carbStore: viewModel.carbStore,
+            doseStore: viewModel.doseStore
+        )
+        _detailViewModel = StateObject(wrappedValue: vm)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Header
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Rejected Period")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text(formatPeriodRange(rejected.measurementStart, rejected.measurementEnd))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Text("Includes 8 hours before and 3 hours after for context")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal)
+
+                // Rejection reasons
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Why This Period Was Rejected")
+                        .font(.headline)
+
+                    ForEach(rejected.rejectionReasons, id: \.self) { reason in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                            Text(reason)
+                                .font(.caption)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color.red.opacity(0.1))
+                .cornerRadius(12)
+                .padding(.horizontal)
+
+                // Period summary
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Period Summary")
+                        .font(.headline)
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 8) {
+                            DetailRow(label: "Duration", value: String(format: "%.1f hours", rejected.durationHours))
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(12)
+                .padding(.horizontal)
+
+                if detailViewModel.isLoading {
+                    ProgressView("Loading charts...")
+                        .padding()
+                } else {
+                    // Show the same charts as qualified periods
+                    if !detailViewModel.glucoseSamples.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Glucose")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: PeriodDetailChartsManager.ChartIndex.glucose.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 200)
+                        }
+                    }
+
+                    if !detailViewModel.iobValues.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Active Insulin (IOB)")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: PeriodDetailChartsManager.ChartIndex.iob.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 150)
+                        }
+                    }
+
+                    if !detailViewModel.cobValues.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Active Carbs (COB)")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: PeriodDetailChartsManager.ChartIndex.cob.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 150)
+                        }
+                    }
+
+                    if !detailViewModel.basalDoses.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Basal Insulin Rate")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: PeriodDetailChartsManager.ChartIndex.basalRate.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 150)
+                        }
+                    }
+
+                    if !detailViewModel.doseEntries.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Insulin Doses")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: PeriodDetailChartsManager.ChartIndex.dose.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 150)
+                        }
+                    }
+                }
+            }
+            .padding(.vertical)
+        }
+        .navigationTitle("Rejected Period Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            detailViewModel.glucoseUnit = displayGlucosePreference.unit
+            detailViewModel.loadData()
+        }
+    }
+
+    private func formatPeriodRange(_ start: Date, _ end: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return "\(formatter.string(from: start)) - \(formatter.string(from: end))"
+    }
+}
+
+// MARK: - Rejected Period Detail View Model
+
+class RejectedPeriodDetailViewModel: ObservableObject {
+    @Published var glucoseSamples: [StoredGlucoseSample] = []
+    @Published var doseEntries: [DoseEntry] = []
+    @Published var basalDoses: [DoseEntry] = []
+    @Published var iobValues: [InsulinValue] = []
+    @Published var cobValues: [CarbValue] = []
+    @Published var isLoading = false
+
+    private let rejected: RejectedPeriod
+    private let glucoseStore: GlucoseStoreProtocol
+    private let carbStore: CarbStoreProtocol
+    private let doseStore: DoseStoreProtocol
+    var glucoseUnit: HKUnit = .milligramsPerDeciliter
+
+    var displayPeriod: (start: Date, end: Date) {
+        let extendedStart = rejected.measurementStart.addingTimeInterval(-8 * 3600)
+        let extendedEnd = rejected.measurementEnd.addingTimeInterval(3 * 3600)
+        return (extendedStart, extendedEnd)
+    }
+
+    var measurementPeriod: (start: Date, end: Date) {
+        return (rejected.measurementStart, rejected.measurementEnd)
+    }
+
+    lazy var chartsManager: PeriodDetailChartsManager = {
+        let colors = ChartColorPalette(
+            axisLine: .axisLineColor,
+            axisLabel: .axisLabelColor,
+            grid: .gridColor,
+            glucoseTint: .glucoseTintColor,
+            insulinTint: .insulinTintColor,
+            carbTint: .carbTintColor
+        )
+        var settings = ChartSettings()
+        settings.top = 12
+        settings.bottom = 0
+        settings.trailing = 8
+        settings.axisTitleLabelsToLabelsSpacing = 0
+        settings.labelsToAxisSpacingX = 6
+        return PeriodDetailChartsManager(colors: colors, settings: settings, traitCollection: .current)
+    }()
+
+    init(rejected: RejectedPeriod, glucoseStore: GlucoseStoreProtocol, carbStore: CarbStoreProtocol, doseStore: DoseStoreProtocol) {
+        self.rejected = rejected
+        self.glucoseStore = glucoseStore
+        self.carbStore = carbStore
+        self.doseStore = doseStore
+    }
+
+    func loadData() {
+        isLoading = true
+
+        let start = displayPeriod.start
+        let end = displayPeriod.end
+
+        let group = DispatchGroup()
+
+        // Load glucose
+        group.enter()
+        glucoseStore.getGlucoseSamples(start: start, end: end) { result in
+            if case .success(let samples) = result {
+                DispatchQueue.main.async {
+                    self.glucoseSamples = samples
+                }
+            }
+            group.leave()
+        }
+
+        // Load COB
+        group.enter()
+        carbStore.getCarbsOnBoardValues(start: start, end: end, effectVelocities: nil) { result in
+            if case .success(let values) = result {
+                DispatchQueue.main.async {
+                    self.cobValues = values
+                }
+            }
+            group.leave()
+        }
+
+        // Load doses
+        group.enter()
+        doseStore.getNormalizedDoseEntries(start: start, end: end) { result in
+            if case .success(let doses) = result {
+                DispatchQueue.main.async {
+                    self.basalDoses = doses.filter { $0.type == .basal || $0.type == .tempBasal || $0.type == .suspend }
+                    self.doseEntries = doses.filter { $0.type != .basal }
+                }
+            }
+            group.leave()
+        }
+
+        // Load IOB
+        group.enter()
+        doseStore.getInsulinOnBoardValues(start: start, end: end, basalDosingEnd: nil) { result in
+            if case .success(let iobValues) = result {
+                DispatchQueue.main.async {
+                    self.iobValues = iobValues
+                }
+            }
+            group.leave()
+        }
+
+        group.notify(queue: .main) {
+            self.isLoading = false
+            self.updateCharts()
+        }
+    }
+
+    private func updateCharts() {
+        let start = displayPeriod.start
+        let end = displayPeriod.end
+
+        chartsManager.startDate = start
+        chartsManager.updateEndDate(end)
+        chartsManager.glucose.glucoseUnit = glucoseUnit
+
+        if !glucoseSamples.isEmpty {
+            let glucoseValues = glucoseSamples.map { SimpleGlucoseValue(startDate: $0.startDate, quantity: $0.quantity) }
+            chartsManager.setGlucoseValues(glucoseValues)
+        }
+
+        if !iobValues.isEmpty {
+            chartsManager.setIOBValues(iobValues)
+        }
+
+        if !doseEntries.isEmpty {
+            chartsManager.setDoseEntries(doseEntries)
+        }
+
+        if !cobValues.isEmpty {
+            chartsManager.setCOBValues(cobValues)
+        }
+
+        if !basalDoses.isEmpty {
+            chartsManager.setBasalDoses(basalDoses)
+        }
     }
 }

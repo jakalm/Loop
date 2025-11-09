@@ -905,10 +905,21 @@ extension LoopDataManager {
                 self.automaticDosingStatus.currentGlucoseValue = nil
             }
 
-            if error == nil, self.automaticDosingStatus.automaticDosingEnabled == true {
+            // Check if we should enact automatic dosing
+            // In calibration mode, also allow dosing if there's a deferred meal bolus recommendation
+            // (deferred meal boluses have their own safety checks for glucose predictions)
+            let hasDeferredMealBolus = self.recommendedAutomaticDose?.recommendation.bolusUnits ?? 0 > 0
+            let shouldEnactDose = error == nil && (self.automaticDosingStatus.automaticDosingEnabled == true ||
+                                                   (self.automaticDosingStatus.loopMode == .calibration && hasDeferredMealBolus))
+
+            if shouldEnactDose {
                 error = self.enactRecommendedAutomaticDose()
                 if self.automaticDosingStatus.loopMode == .calibration {
-                    self.logger.default("Calibration loop: automatic dosing enabled (glucose out of range)")
+                    if hasDeferredMealBolus && self.automaticDosingStatus.automaticDosingEnabled == false {
+                        self.logger.default("Calibration loop: delivering deferred meal bolus (glucose predictions safe)")
+                    } else {
+                        self.logger.default("Calibration loop: automatic dosing enabled (glucose out of range)")
+                    }
                 }
             } else {
                 if self.automaticDosingStatus.loopMode == .calibration {

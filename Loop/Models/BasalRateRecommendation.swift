@@ -107,6 +107,23 @@ struct PeriodAnalysisDebug: Identifiable {
     }
 }
 
+/// Represents a rejected period for basal rate analysis
+struct RejectedPeriod: Identifiable {
+    let id = UUID()
+    let measurementStart: Date
+    let measurementEnd: Date
+    let duration: TimeInterval
+    let rejectionReasons: [String]
+
+    var rejectionSummary: String {
+        rejectionReasons.joined(separator: ", ")
+    }
+
+    var durationHours: Double {
+        duration / .hours(1)
+    }
+}
+
 /// Debug results from basal rate analysis
 struct BasalAnalysisDebugInfo {
     let analyzedPeriods: [PeriodAnalysisDebug]

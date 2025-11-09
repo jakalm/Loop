@@ -16,6 +16,7 @@ import SwiftCharts
 public struct CarbRatioRecommendationsView: View {
     @StateObject private var viewModel: CarbRatioRecommendationsViewModel
     @EnvironmentObject private var displayGlucosePreference: DisplayGlucosePreference
+    @State private var showAllRejectedMeals = false
 
     public init(viewModel: CarbRatioRecommendationsViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -133,7 +134,9 @@ public struct CarbRatioRecommendationsView: View {
                         Text("Debug: Rejected Meals (\(viewModel.rejectedMeals.count))")
                             .font(.headline)
 
-                        ForEach(viewModel.rejectedMeals.prefix(10)) { rejected in
+                        let mealsToShow = showAllRejectedMeals ? viewModel.rejectedMeals : Array(viewModel.rejectedMeals.prefix(10))
+
+                        ForEach(mealsToShow) { rejected in
                             NavigationLink(destination: RejectedMealDetailView(
                                 rejected: rejected,
                                 viewModel: viewModel
@@ -160,9 +163,17 @@ public struct CarbRatioRecommendationsView: View {
                         }
 
                         if viewModel.rejectedMeals.count > 10 {
-                            Text("... and \(viewModel.rejectedMeals.count - 10) more")
+                            Button(action: {
+                                showAllRejectedMeals.toggle()
+                            }) {
+                                HStack {
+                                    Image(systemName: showAllRejectedMeals ? "chevron.up" : "chevron.down")
+                                    Text(showAllRejectedMeals ? "Show less" : "Show \(viewModel.rejectedMeals.count - 10) more")
+                                }
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.blue)
+                                .padding(.top, 4)
+                            }
                         }
                     }
                     .padding(.horizontal)
@@ -439,7 +450,7 @@ struct RejectedMealDetailView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
-                    Text("Includes 3 hours before and after for context")
+                    Text("Includes 8 hours before and 3 hours after for context")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -597,7 +608,7 @@ class RejectedMealDetailViewModel: ObservableObject {
     var glucoseUnit: HKUnit = .milligramsPerDeciliter
 
     var displayPeriod: (start: Date, end: Date) {
-        let extendedStart = carbEntry.startDate.addingTimeInterval(-3 * 3600)
+        let extendedStart = carbEntry.startDate.addingTimeInterval(-8 * 3600)
         let extendedEnd = carbEntry.startDate.addingTimeInterval(8 * 3600) // 8 hours after meal
         return (extendedStart, extendedEnd)
     }

@@ -13,6 +13,7 @@ import LoopCore
 
 public class BasalRateRecommendationsViewModel: ObservableObject {
     @Published var recommendations: [BasalRateRecommendation] = []
+    @Published var rejectedPeriods: [RejectedPeriod] = []
     @Published var isAnalyzing: Bool = false
     @Published var selectedDays: Int {
         didSet {
@@ -56,10 +57,13 @@ public class BasalRateRecommendationsViewModel: ObservableObject {
     func refreshRecommendations() {
         isAnalyzing = true
         recommendations = []
+        rejectedPeriods = []
 
-        recommendationManager.generateBasalRateRecommendations(daysToAnalyze: selectedDays) { [weak self] newRecommendations in
+        recommendationManager.generateBasalRateRecommendations(daysToAnalyze: selectedDays) { [weak self] newRecommendations, newRejectedPeriods in
             DispatchQueue.main.async {
                 self?.recommendations = newRecommendations
+                // Sort rejected periods in reverse chronological order (latest first)
+                self?.rejectedPeriods = newRejectedPeriods.sorted { $0.measurementStart > $1.measurementStart }
                 self?.isAnalyzing = false
             }
         }
