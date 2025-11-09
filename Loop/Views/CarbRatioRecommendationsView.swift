@@ -10,6 +10,8 @@ import SwiftUI
 import HealthKit
 import LoopKit
 import LoopKitUI
+import LoopUI
+import SwiftCharts
 
 public struct CarbRatioRecommendationsView: View {
     @StateObject private var viewModel: CarbRatioRecommendationsViewModel
@@ -120,6 +122,50 @@ public struct CarbRatioRecommendationsView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
+                }
+
+                // Debug: Show rejected meals
+                if !viewModel.rejectedMeals.isEmpty {
+                    Divider()
+                        .padding(.vertical)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Debug: Rejected Meals (\(viewModel.rejectedMeals.count))")
+                            .font(.headline)
+
+                        ForEach(viewModel.rejectedMeals.prefix(10)) { rejected in
+                            NavigationLink(destination: RejectedMealDetailView(
+                                rejected: rejected,
+                                viewModel: viewModel
+                            )) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(formatMealTime(rejected.carbEntryTime))
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+
+                                    Text("\(String(format: "%.0f", rejected.carbAmount))g carbs")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+
+                                    Text("Rejected: \(rejected.rejectionSummary)")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding()
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(10)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+
+                        if viewModel.rejectedMeals.count > 10 {
+                            Text("... and \(viewModel.rejectedMeals.count - 10) more")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.horizontal)
                 }
             }
             .padding(.vertical)
@@ -349,5 +395,328 @@ public struct CarbRatioRecommendationsView: View {
         let percentage = abs(recommendation.changePercentage)
 
         return String(format: "%@ by %.1f g/U (%.0f%%) - %@", action, amount, percentage, interpretation)
+    }
+
+    private func formatMealTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Rejected Meal Detail View
+
+struct RejectedMealDetailView: View {
+    let rejected: RejectedMeal
+    let viewModel: CarbRatioRecommendationsViewModel
+
+    @StateObject private var detailViewModel: RejectedMealDetailViewModel
+    @EnvironmentObject private var displayGlucosePreference: DisplayGlucosePreference
+
+    init(rejected: RejectedMeal, viewModel: CarbRatioRecommendationsViewModel) {
+        self.rejected = rejected
+        self.viewModel = viewModel
+        let vm = RejectedMealDetailViewModel(
+            carbEntry: rejected.carbEntry,
+            glucoseStore: viewModel.glucoseStore,
+            carbStore: viewModel.carbStore,
+            doseStore: viewModel.doseStore
+        )
+        _detailViewModel = StateObject(wrappedValue: vm)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Header
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Rejected Meal")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text(formatMealTime(rejected.carbEntryTime))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Text("Includes 3 hours before and after for context")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal)
+
+                // Rejection reasons
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Why This Meal Was Rejected")
+                        .font(.headline)
+
+                    ForEach(rejected.rejectionReasons, id: \.self) { reason in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                            Text(reason)
+                                .font(.caption)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color.red.opacity(0.1))
+                .cornerRadius(12)
+                .padding(.horizontal)
+
+                // Meal summary
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Meal Summary")
+                        .font(.headline)
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 8) {
+                            DetailRow(label: "Carbs", value: String(format: "%.0f g", rejected.carbAmount))
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(12)
+                .padding(.horizontal)
+
+                if detailViewModel.isLoading {
+                    ProgressView("Loading charts...")
+                        .padding()
+                } else {
+                    // Show the same charts as qualified meals
+                    if !detailViewModel.glucoseSamples.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Glucose")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: MealDetailChartsManager.ChartIndex.glucose.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 200)
+                        }
+                    }
+
+                    if !detailViewModel.iobValues.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Active Insulin (IOB)")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: MealDetailChartsManager.ChartIndex.iob.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 150)
+                        }
+                    }
+
+                    if !detailViewModel.cobValues.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Active Carbs (COB)")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: MealDetailChartsManager.ChartIndex.cob.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 150)
+                        }
+                    }
+
+                    if !detailViewModel.basalDoses.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Basal Insulin Rate")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: MealDetailChartsManager.ChartIndex.basalRate.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 150)
+                        }
+                    }
+
+                    if !detailViewModel.doseEntries.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Insulin Doses")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: MealDetailChartsManager.ChartIndex.dose.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 150)
+                        }
+                    }
+                }
+            }
+            .padding(.vertical)
+        }
+        .navigationTitle("Rejected Meal Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            detailViewModel.glucoseUnit = displayGlucosePreference.unit
+            detailViewModel.loadData()
+        }
+    }
+
+    private func formatMealTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Rejected Meal Detail View Model
+
+class RejectedMealDetailViewModel: ObservableObject {
+    @Published var glucoseSamples: [StoredGlucoseSample] = []
+    @Published var doseEntries: [DoseEntry] = []
+    @Published var basalDoses: [DoseEntry] = []
+    @Published var iobValues: [InsulinValue] = []
+    @Published var cobValues: [CarbValue] = []
+    @Published var isLoading = false
+
+    private let carbEntry: StoredCarbEntry
+    private let glucoseStore: GlucoseStoreProtocol
+    private let carbStore: CarbStoreProtocol
+    private let doseStore: DoseStoreProtocol
+    var glucoseUnit: HKUnit = .milligramsPerDeciliter
+
+    var displayPeriod: (start: Date, end: Date) {
+        let extendedStart = carbEntry.startDate.addingTimeInterval(-3 * 3600)
+        let extendedEnd = carbEntry.startDate.addingTimeInterval(8 * 3600) // 8 hours after meal
+        return (extendedStart, extendedEnd)
+    }
+
+    var measurementPeriod: (start: Date, end: Date) {
+        return (carbEntry.startDate, carbEntry.startDate.addingTimeInterval(5 * 3600))
+    }
+
+    lazy var chartsManager: MealDetailChartsManager = {
+        let colors = ChartColorPalette(
+            axisLine: .axisLineColor,
+            axisLabel: .axisLabelColor,
+            grid: .gridColor,
+            glucoseTint: .glucoseTintColor,
+            insulinTint: .insulinTintColor,
+            carbTint: .carbTintColor
+        )
+        var settings = ChartSettings()
+        settings.top = 12
+        settings.bottom = 0
+        settings.trailing = 8
+        settings.axisTitleLabelsToLabelsSpacing = 0
+        settings.labelsToAxisSpacingX = 6
+        return MealDetailChartsManager(colors: colors, settings: settings, traitCollection: .current)
+    }()
+
+    init(carbEntry: StoredCarbEntry, glucoseStore: GlucoseStoreProtocol, carbStore: CarbStoreProtocol, doseStore: DoseStoreProtocol) {
+        self.carbEntry = carbEntry
+        self.glucoseStore = glucoseStore
+        self.carbStore = carbStore
+        self.doseStore = doseStore
+    }
+
+    func loadData() {
+        isLoading = true
+
+        let start = displayPeriod.start
+        let end = displayPeriod.end
+
+        let group = DispatchGroup()
+
+        // Load glucose
+        group.enter()
+        glucoseStore.getGlucoseSamples(start: start, end: end) { result in
+            if case .success(let samples) = result {
+                DispatchQueue.main.async {
+                    self.glucoseSamples = samples
+                }
+            }
+            group.leave()
+        }
+
+        // Load COB
+        group.enter()
+        carbStore.getCarbsOnBoardValues(start: start, end: end, effectVelocities: nil) { result in
+            if case .success(let values) = result {
+                DispatchQueue.main.async {
+                    self.cobValues = values
+                }
+            }
+            group.leave()
+        }
+
+        // Load doses
+        group.enter()
+        doseStore.getNormalizedDoseEntries(start: start, end: end) { result in
+            if case .success(let doses) = result {
+                DispatchQueue.main.async {
+                    self.basalDoses = doses.filter { $0.type == .basal || $0.type == .tempBasal || $0.type == .suspend }
+                    self.doseEntries = doses.filter { $0.type != .basal }
+                }
+            }
+            group.leave()
+        }
+
+        // Load IOB
+        group.enter()
+        doseStore.getInsulinOnBoardValues(start: start, end: end, basalDosingEnd: nil) { result in
+            if case .success(let iobValues) = result {
+                DispatchQueue.main.async {
+                    self.iobValues = iobValues
+                }
+            }
+            group.leave()
+        }
+
+        group.notify(queue: .main) {
+            self.isLoading = false
+            self.updateCharts()
+        }
+    }
+
+    private func updateCharts() {
+        let start = displayPeriod.start
+        let end = displayPeriod.end
+
+        chartsManager.startDate = start
+        chartsManager.updateEndDate(end)
+        chartsManager.glucose.glucoseUnit = glucoseUnit
+
+        if !glucoseSamples.isEmpty {
+            let glucoseValues = glucoseSamples.map { SimpleGlucoseValue(startDate: $0.startDate, quantity: $0.quantity) }
+            chartsManager.setGlucoseValues(glucoseValues)
+        }
+
+        if !iobValues.isEmpty {
+            chartsManager.setIOBValues(iobValues)
+        }
+
+        if !doseEntries.isEmpty {
+            chartsManager.setDoseEntries(doseEntries)
+        }
+
+        if !cobValues.isEmpty {
+            chartsManager.setCOBValues(cobValues)
+        }
+
+        if !basalDoses.isEmpty {
+            chartsManager.setBasalDoses(basalDoses)
+        }
     }
 }

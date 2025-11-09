@@ -1198,7 +1198,7 @@ class SettingsRecommendationManager {
     // MARK: - Carb Ratio Recommendations
 
     /// Generate carb ratio (I:C) recommendations based on meal analysis
-    func generateCarbRatioRecommendations(daysToAnalyze: Int, completion: @escaping ([CarbRatioRecommendation]) -> Void) {
+    func generateCarbRatioRecommendations(daysToAnalyze: Int, completion: @escaping ([CarbRatioRecommendation], [RejectedMeal]) -> Void) {
         let endDate = Date()
         let startDate = endDate.addingTimeInterval(-TimeInterval(daysToAnalyze) * .hours(24))
 
@@ -1206,23 +1206,25 @@ class SettingsRecommendationManager {
         fetchAnalysisData(from: startDate, to: endDate) { result in
             switch result {
             case .success(let data):
+                var rejectedMeals: [RejectedMeal] = []
                 let mealWindows = self.identifyValidMealWindows(
                     glucoseSamples: data.glucoseSamples,
                     carbEntries: data.carbEntries,
                     doseEntries: data.doseEntries,
                     from: startDate,
-                    to: endDate
+                    to: endDate,
+                    rejectedMeals: &rejectedMeals
                 )
 
                 let recommendations = self.generateCarbRatioRecommendations(
                     from: mealWindows,
                     glucoseSamples: data.glucoseSamples
                 )
-                completion(recommendations)
+                completion(recommendations, rejectedMeals)
 
             case .failure(let error):
                 self.logger.error("Failed to fetch analysis data for carb ratio: \(String(describing: error))")
-                completion([])
+                completion([], [])
             }
         }
     }
@@ -1233,7 +1235,8 @@ class SettingsRecommendationManager {
         carbEntries: [StoredCarbEntry],
         doseEntries: [DoseEntry],
         from startDate: Date,
-        to endDate: Date
+        to endDate: Date,
+        rejectedMeals: inout [RejectedMeal]
     ) -> [CarbRatioAnalysisWindow] {
         var validWindows: [CarbRatioAnalysisWindow] = []
 
@@ -1243,13 +1246,24 @@ class SettingsRecommendationManager {
             guard carbEntry.startDate >= startDate && carbEntry.startDate <= endDate else { continue }
 
             // Try to create a valid analysis window for this meal
+            var reasons: [String] = []
             if let window = analyzeMealPeriod(
                 carbEntry: carbEntry,
                 glucoseSamples: glucoseSamples,
                 carbEntries: carbEntries,
-                doseEntries: doseEntries
+                doseEntries: doseEntries,
+                rejectionReasons: &reasons
             ) {
                 validWindows.append(window)
+            } else if !reasons.isEmpty {
+                // Meal was rejected, add to rejected meals list
+                let carbAmount = carbEntry.quantity.doubleValue(for: .gram())
+                rejectedMeals.append(RejectedMeal(
+                    carbEntry: carbEntry,
+                    carbEntryTime: carbEntry.startDate,
+                    carbAmount: carbAmount,
+                    rejectionReasons: reasons
+                ))
             }
         }
 
@@ -1261,13 +1275,17 @@ class SettingsRecommendationManager {
         carbEntry: StoredCarbEntry,
         glucoseSamples: [StoredGlucoseSample],
         carbEntries: [StoredCarbEntry],
-        doseEntries: [DoseEntry]
+        doseEntries: [DoseEntry],
+        rejectionReasons: inout [String]
     ) -> CarbRatioAnalysisWindow? {
         let mealTime = carbEntry.startDate
         let carbAmount = carbEntry.quantity.doubleValue(for: .gram())
 
         // Need at least 10g carbs for reliable analysis
-        guard carbAmount >= 10.0 else { return nil }
+        guard carbAmount >= 10.0 else {
+            rejectionReasons.append("Less than 10g carbs (had \(String(format: "%.1f", carbAmount))g)")
+            return nil
+        }
 
         // Define maximum observation period (up to 8 hours for slow-absorbing carbs)
         let maxObservationEnd = mealTime.addingTimeInterval(8 * .hours(1))
@@ -1291,7 +1309,10 @@ class SettingsRecommendationManager {
             dose.startDate <= bolusEnd
         }
 
-        guard !mealBoluses.isEmpty else { return nil }
+        guard !mealBoluses.isEmpty else {
+            rejectionReasons.append("No bolus found within 30 minutes of meal")
+            return nil
+        }
 
         // Latest bolus determines when insulin action ends
         let latestBolusTime = mealBoluses.map { $0.startDate }.max() ?? mealTime
@@ -1321,7 +1342,10 @@ class SettingsRecommendationManager {
             cobAtMealTime += carbAmount * fractionRemaining
         }
 
-        guard cobAtMealTime < 1.0 else { return nil }
+        guard cobAtMealTime < 1.0 else {
+            rejectionReasons.append("COB at meal time: \(String(format: "%.1f", cobAtMealTime))g (must be <1g)")
+            return nil
+        }
 
         // Check for no other carb entries during observation (only this single meal)
         let overlappingCarbs = carbEntries.filter { otherCarb in
@@ -1329,7 +1353,14 @@ class SettingsRecommendationManager {
             return otherCarb.startDate > mealTime && otherCarb.startDate <= observationEnd
         }
 
-        guard overlappingCarbs.isEmpty else { return nil }
+        guard overlappingCarbs.isEmpty else {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            let times = overlappingCarbs.map { formatter.string(from: $0.startDate) }.joined(separator: ", ")
+            rejectionReasons.append("Overlapping carbs during observation at: \(times)")
+            return nil
+        }
 
         // Check for no recent lows (<4.0 mmol/L) within 8 hours before
         let lowGlucoseThreshold: Double = 72.0  // 4.0 mmol/L
@@ -1341,7 +1372,14 @@ class SettingsRecommendationManager {
             sample.quantity.doubleValue(for: .milligramsPerDeciliter) < lowGlucoseThreshold
         }
 
-        guard recentLows.isEmpty else { return nil }
+        guard recentLows.isEmpty else {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            let lowTimes = recentLows.map { formatter.string(from: $0.startDate) }.joined(separator: ", ")
+            rejectionReasons.append("Recent low detected (<4.0 mmol/L) at: \(lowTimes)")
+            return nil
+        }
 
         // Check for low active insulin at meal time (< 0.5 U)
         let iob = calculateActiveInsulin(
@@ -1350,10 +1388,14 @@ class SettingsRecommendationManager {
             insulinActionDuration: insulinActionDuration
         )
 
-        guard abs(iob) < 0.5 else { return nil }
+        guard abs(iob) < 0.5 else {
+            rejectionReasons.append("IOB at meal start: \(String(format: "%.2f", abs(iob)))U (must be <0.5U)")
+            return nil
+        }
 
         // Get start glucose for correction calculation
         guard let startGlucoseSample = glucoseSamples.filter({ $0.startDate >= mealTime && $0.startDate <= mealTime.addingTimeInterval(15 * 60) }).first else {
+            rejectionReasons.append("No starting glucose reading within 15 minutes of meal")
             return nil
         }
         let startGlucose = startGlucoseSample.quantity.doubleValue(for: .milligramsPerDeciliter)
@@ -1390,7 +1432,14 @@ class SettingsRecommendationManager {
             dose.startDate <= observationEnd
         }
 
-        guard observationBoluses.isEmpty else { return nil }
+        guard observationBoluses.isEmpty else {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            let bolusTimes = observationBoluses.map { formatter.string(from: $0.startDate) }.joined(separator: ", ")
+            rejectionReasons.append("Correction bolus during observation at: \(bolusTimes)")
+            return nil
+        }
 
         // Get glucose readings during observation period
         let observationGlucose = glucoseSamples.filter { sample in
@@ -1398,7 +1447,10 @@ class SettingsRecommendationManager {
         }
 
         // Need sufficient glucose data (at least 4 readings, roughly one every hour for 4+ hours)
-        guard observationGlucose.count >= 4 else { return nil }
+        guard observationGlucose.count >= 4 else {
+            rejectionReasons.append("Insufficient glucose readings during observation (had \(observationGlucose.count), need at least 4)")
+            return nil
+        }
 
         // Check that glucose was within 4.0-13.0 mmol/L (72-234 mg/dL) for at least 2 hours
         if !isGlucoseInRangeForMinimumDuration(
@@ -1407,12 +1459,14 @@ class SettingsRecommendationManager {
             measurementEnd: observationEnd,
             minimumDuration: 2 * .hours(1)
         ) {
+            rejectionReasons.append("Glucose out of range (4.0-13.0 mmol/L) for too long during observation")
             return nil
         }
 
         // Get start and end glucose values
         guard let startGlucose = glucoseSamples.filter({ $0.startDate >= mealTime && $0.startDate <= mealTime.addingTimeInterval(15 * 60) }).first,
               let endGlucose = observationGlucose.last else {
+            rejectionReasons.append("Missing start or end glucose reading")
             return nil
         }
 

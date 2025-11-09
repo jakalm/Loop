@@ -13,6 +13,7 @@ import LoopCore
 
 public class CarbRatioRecommendationsViewModel: ObservableObject {
     @Published var recommendations: [CarbRatioRecommendation] = []
+    @Published var rejectedMeals: [RejectedMeal] = []
     @Published var isAnalyzing: Bool = false
     @Published var selectedDays: Int {
         didSet {
@@ -56,10 +57,12 @@ public class CarbRatioRecommendationsViewModel: ObservableObject {
     func refreshRecommendations() {
         isAnalyzing = true
         recommendations = []
+        rejectedMeals = []
 
-        recommendationManager.generateCarbRatioRecommendations(daysToAnalyze: selectedDays) { [weak self] newRecommendations in
+        recommendationManager.generateCarbRatioRecommendations(daysToAnalyze: selectedDays) { [weak self] newRecommendations, newRejectedMeals in
             DispatchQueue.main.async {
                 self?.recommendations = newRecommendations
+                self?.rejectedMeals = newRejectedMeals
                 self?.isAnalyzing = false
             }
         }

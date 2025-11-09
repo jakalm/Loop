@@ -115,20 +115,14 @@ struct CarbRatioAnalysisWindow {
 }
 
 /// Debug information about why a meal was rejected or accepted
-struct MealAnalysisDebug: Identifiable {
+struct RejectedMeal: Identifiable {
     let id = UUID()
+    let carbEntry: StoredCarbEntry
     let carbEntryTime: Date
     let carbAmount: Double
-    let mealBolus: Double
-    let isValid: Bool
     let rejectionReasons: [String]
-}
 
-/// Debug results from carb ratio analysis
-struct CarbRatioAnalysisDebugInfo {
-    let analyzedMeals: [MealAnalysisDebug]
-    let totalMealsChecked: Int
-    let validMealsFound: Int
-    let totalCarbEntries: Int
-    let analysisPeriod: (start: Date, end: Date)
+    var rejectionSummary: String {
+        rejectionReasons.joined(separator: ", ")
+    }
 }
