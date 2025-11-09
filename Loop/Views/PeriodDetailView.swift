@@ -100,7 +100,7 @@ struct PeriodDetailView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
-                    Text("Includes 3 hours before and after for context")
+                    Text("Includes 8 hours before and 3 hours after for context")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -151,15 +151,16 @@ struct PeriodDetailView: View {
                             .padding(.top, 4)
                     }
                     .padding()
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(10)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(12)
                     .padding(.horizontal)
 
-                    // Glucose Chart
+                    // Glucose chart
                     if !detailViewModel.glucoseSamples.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Blood Glucose")
+                            Text("Glucose")
                                 .font(.headline)
+                                .padding(.horizontal)
 
                             LoopChartView(
                                 chartManager: detailViewModel.chartsManager,
@@ -168,100 +169,84 @@ struct PeriodDetailView: View {
                             )
                             .frame(height: 200)
                         }
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(10)
-                        .padding(.horizontal)
                     }
 
-                    // Active Insulin (IOB) Chart
+                    // IOB chart
                     if !detailViewModel.iobValues.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Active Insulin (IOB)")
                                 .font(.headline)
+                                .padding(.horizontal)
 
                             LoopChartView(
                                 chartManager: detailViewModel.chartsManager,
                                 chartIndex: StatusChartsManager.ChartIndex.iob.rawValue,
                                 measurementPeriod: detailViewModel.measurementPeriod
                             )
-                            .frame(height: 100)
+                            .frame(height: 150)
                         }
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(10)
-                        .padding(.horizontal)
                     }
 
-                    // Basal Rate Chart
-                    if !detailViewModel.basalDoses.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Basal Insulin Rate")
-                                .font(.headline)
-
-                            LoopChartView(
-                                chartManager: detailViewModel.chartsManager,
-                                chartIndex: PeriodDetailChartsManager.ChartIndex.basalRate.rawValue,
-                                measurementPeriod: detailViewModel.measurementPeriod
-                            )
-                            .frame(height: 100)
-                        }
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(10)
-                        .padding(.horizontal)
-                    }
-
-                    // Insulin Doses Chart
-                    if !detailViewModel.insulinDoses.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Insulin Doses")
-                                .font(.headline)
-
-                            LoopChartView(
-                                chartManager: detailViewModel.chartsManager,
-                                chartIndex: StatusChartsManager.ChartIndex.dose.rawValue,
-                                measurementPeriod: detailViewModel.measurementPeriod
-                            )
-                            .frame(height: 100)
-                        }
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(10)
-                        .padding(.horizontal)
-                    }
-
-                    // Active Carbs (COB) Chart
+                    // COB chart
                     if !detailViewModel.cobValues.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Active Carbs (COB)")
                                 .font(.headline)
+                                .padding(.horizontal)
 
                             LoopChartView(
                                 chartManager: detailViewModel.chartsManager,
                                 chartIndex: StatusChartsManager.ChartIndex.cob.rawValue,
                                 measurementPeriod: detailViewModel.measurementPeriod
                             )
-                            .frame(height: 100)
+                            .frame(height: 150)
                         }
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(10)
-                        .padding(.horizontal)
                     }
 
-                    // Show message if no data
+                    // Basal rate chart
+                    if !detailViewModel.basalDoses.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Basal Insulin Rate")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: PeriodDetailChartsManager.ChartIndex.basalRate.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 150)
+                        }
+                    }
+
+                    // Dose chart
+                    if !detailViewModel.insulinDoses.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Insulin Doses")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            LoopChartView(
+                                chartManager: detailViewModel.chartsManager,
+                                chartIndex: StatusChartsManager.ChartIndex.dose.rawValue,
+                                measurementPeriod: detailViewModel.measurementPeriod
+                            )
+                            .frame(height: 150)
+                        }
+                    }
+
+                    // Show message if no chart data
                     if detailViewModel.glucoseSamples.isEmpty &&
                        detailViewModel.iobValues.isEmpty &&
-                       detailViewModel.insulinDoses.isEmpty &&
+                       detailViewModel.cobValues.isEmpty &&
                        detailViewModel.basalDoses.isEmpty &&
-                       detailViewModel.cobValues.isEmpty {
+                       detailViewModel.insulinDoses.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "chart.xyaxis.line")
                                 .font(.system(size: 48))
                                 .foregroundColor(.gray)
 
-                            Text("No data available for this period")
+                            Text("No chart data available")
                                 .font(.headline)
                                 .foregroundColor(.secondary)
                         }
@@ -314,7 +299,7 @@ class PeriodDetailViewModel: ObservableObject {
     var glucoseUnit: HKUnit = .milligramsPerDeciliter
 
     var displayPeriod: (start: Date, end: Date) {
-        let extendedStart = window.measurementStart.addingTimeInterval(-3 * .hours(1))
+        let extendedStart = window.measurementStart.addingTimeInterval(-8 * .hours(1))
         let extendedEnd = window.measurementEnd.addingTimeInterval(3 * .hours(1))
         return (extendedStart, extendedEnd)
     }
@@ -355,8 +340,8 @@ class PeriodDetailViewModel: ObservableObject {
     func loadData() {
         isLoading = true
 
-        // Extend period by 3 hours on each side
-        let extendedStart = window.measurementStart.addingTimeInterval(-3 * .hours(1))
+        // Extend period by 8 hours before and 3 hours after
+        let extendedStart = window.measurementStart.addingTimeInterval(-8 * .hours(1))
         let extendedEnd = window.measurementEnd.addingTimeInterval(3 * .hours(1))
 
         let group = DispatchGroup()
@@ -500,10 +485,11 @@ class PeriodDetailViewModel: ObservableObject {
     }
 
     private func updateCharts() {
-        let extendedStart = window.measurementStart.addingTimeInterval(-3 * .hours(1))
+        let extendedStart = window.measurementStart.addingTimeInterval(-8 * .hours(1))
         let extendedEnd = window.measurementEnd.addingTimeInterval(3 * .hours(1))
 
-        // Update date range
+        // Update date range - set maxEndDate first to prevent rounding up
+        chartsManager.maxEndDate = extendedEnd
         chartsManager.startDate = extendedStart
         chartsManager.updateEndDate(extendedEnd)
 

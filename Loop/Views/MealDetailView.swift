@@ -108,7 +108,7 @@ struct MealDetailView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
-                    Text("Includes 3 hours before and after for context")
+                    Text("Includes 8 hours before and 3 hours after for context")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -322,7 +322,7 @@ class MealDetailViewModel: ObservableObject {
     var glucoseUnit: HKUnit = .milligramsPerDeciliter
 
     var displayPeriod: (start: Date, end: Date) {
-        let extendedStart = meal.carbEntryTime.addingTimeInterval(-3 * 3600)
+        let extendedStart = meal.carbEntryTime.addingTimeInterval(-8 * 3600)
         let extendedEnd = meal.observationEnd.addingTimeInterval(3 * 3600)
         return (extendedStart, extendedEnd)
     }
@@ -359,7 +359,7 @@ class MealDetailViewModel: ObservableObject {
     func loadData() {
         isLoading = true
 
-        // Load data for extended period (3 hours before and after)
+        // Load data for extended period (8 hours before and 3 hours after)
         let start = displayPeriod.start
         let end = displayPeriod.end
 
@@ -422,7 +422,8 @@ class MealDetailViewModel: ObservableObject {
         let start = displayPeriod.start
         let end = displayPeriod.end
 
-        // Update date range
+        // Update date range - set maxEndDate first to prevent rounding up
+        chartsManager.maxEndDate = end
         chartsManager.startDate = start
         chartsManager.updateEndDate(end)
 
