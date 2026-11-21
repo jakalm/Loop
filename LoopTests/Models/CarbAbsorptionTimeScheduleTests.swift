@@ -8,6 +8,7 @@
 import XCTest
 import HealthKit
 import LoopKit
+import LoopKitUI
 
 @testable import Loop
 
@@ -132,5 +133,19 @@ class CarbAbsorptionTimeScheduleTests: XCTestCase {
         XCTAssertEqual(enabled.items.map(\.absorptionTime), [.hours(2.5)])
         let disabled = try JSONDecoder().decode(CarbAbsorptionTimeSchedule.self, from: Data(#"{"isEnabled":false,"items":[\#(item)]}"#.utf8))
         XCTAssertEqual(disabled, .standard)
+    }
+
+    func testSelectableHoursSurviveThePickersRounding() {
+        let hours = TherapySettingsView.AdditionalScheduleSetting.carbAbsorptionSelectableHours
+        XCTAssertEqual(hours.map { HKUnit.hour().roundForPicker(value: $0) }, hours)
+        XCTAssertEqual(hours.first, 0.5)
+        XCTAssertEqual(hours.last, 8)
+        XCTAssertTrue(hours.contains(2.5))
+    }
+
+    func testHoursAreShownAsHoursAndMinutes() {
+        let string = TherapySettingsView.AdditionalScheduleSetting.carbAbsorptionHoursString(2.5)
+        XCTAssertTrue(string.contains("2") && string.contains("30"), string)
+        XCTAssertFalse(string.contains("2.5") || string.contains("2,5"), string)
     }
 }
