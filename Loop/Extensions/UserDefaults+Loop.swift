@@ -17,6 +17,7 @@ extension UserDefaults {
         case loopNotRunningNotifications = "com.loopkit.Loop.loopNotRunningNotifications"
         case inFlightAutomaticDose = "com.loopkit.Loop.inFlightAutomaticDose"
         case favoriteFoods = "com.loopkit.Loop.favoriteFoods"
+        case carbAbsorptionTimeSchedule = "com.loopkit.Loop.carbAbsorptionTimeSchedule"
     }
 
     var legacyPumpManagerRawValue: PumpManager.RawValue? {
@@ -106,6 +107,24 @@ extension UserDefaults {
                 set(data, forKey: Key.favoriteFoods.rawValue)
             } catch {
                 assertionFailure("Unable to encode stored favorite foods")
+            }
+        }
+    }
+
+    var carbAbsorptionTimeSchedule: CarbAbsorptionTimeSchedule {
+        get {
+            guard let data = object(forKey: Key.carbAbsorptionTimeSchedule.rawValue) as? Data,
+                  let schedule = try? JSONDecoder().decode(CarbAbsorptionTimeSchedule.self, from: data) else {
+                return .suggested
+            }
+            return schedule
+        }
+        set {
+            do {
+                let data = try JSONEncoder().encode(newValue)
+                set(data, forKey: Key.carbAbsorptionTimeSchedule.rawValue)
+            } catch {
+                assertionFailure("Unable to encode carb absorption time schedule")
             }
         }
     }

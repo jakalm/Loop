@@ -50,6 +50,7 @@ public struct SettingsView: View {
             }
             
             case favoriteFoods
+            case carbAbsorptionSchedule
         }
     }
     
@@ -119,6 +120,8 @@ public struct SettingsView: View {
                 switch sheet {
                 case .favoriteFoods:
                     FavoriteFoodsView()
+                case .carbAbsorptionSchedule:
+                    CarbAbsorptionScheduleView()
                 }
             }
         }
@@ -367,6 +370,11 @@ extension SettingsView {
                         imageView: Image("Favorite Foods Icon").renderingMode(.template).foregroundColor(carbTintColor),
                         label: "Favorite Foods",
                         descriptiveText: "Simplify Carb Entry")
+            LargeButton(action: { sheet = .carbAbsorptionSchedule },
+                        includeArrow: true,
+                        imageView: Image(systemName: "clock").resizable().aspectRatio(contentMode: .fit).padding(12).foregroundColor(carbTintColor),
+                        label: String(localized: "Carb Absorption Times", comment: "Title for carb absorption time schedule view"),
+                        descriptiveText: String(localized: "Default by Time of Day"))
         }
     }
     

@@ -5607,6 +5607,16 @@
         }
       }
     },
+    "Add Period" : {
+      "localizations" : {
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lägg till period"
+          }
+        }
+      }
+    },
     "Add Pump" : {
       "comment" : "Action sheet title selecting Pump\nThe title of the pump chooser in settings\nTitle text for button to add pump device\nTitle text for button to set up a Pump",
       "localizations" : {
@@ -10511,6 +10521,17 @@
         }
       }
     },
+    "Carb Absorption Times" : {
+      "comment" : "Title for carb absorption time schedule view",
+      "localizations" : {
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Absorptionstider för kolhydrater"
+          }
+        }
+      }
+    },
     "Carb Entry" : {
       "comment" : "Label for carb entry row on bolus screen",
       "localizations" : {
@@ -15003,6 +15024,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "dB"
+          }
+        }
+      }
+    },
+    "Default by Time of Day" : {
+      "localizations" : {
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Efter tid på dygnet"
           }
         }
       }
@@ -26569,6 +26600,26 @@
         }
       }
     },
+    "Meal Time" : {
+      "localizations" : {
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Måltidstid"
+          }
+        }
+      }
+    },
+    "Meals Starting From" : {
+      "localizations" : {
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Måltider som börjar"
+          }
+        }
+      }
+    },
     "Missed Meal Notifications" : {
       "comment" : "Title for missed meal notifications toggle",
       "localizations" : {
@@ -27729,6 +27780,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "新增常用食物"
+          }
+        }
+      }
+    },
+    "New carb entries get the absorption time for the time of day of the meal. Changing the meal time updates it, unless you have picked a favorite food or changed the absorption time yourself. 🍭 and 🍕 keep their fixed times." : {
+      "localizations" : {
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nya kolhydratposter får absorptionstiden för den tid på dygnet då måltiden äts. Om du ändrar måltidens tid ändras den också, om du inte valt en favoritmat eller själv ändrat absorptionstiden. 🍭 och 🍕 behåller sina fasta tider."
           }
         }
       }

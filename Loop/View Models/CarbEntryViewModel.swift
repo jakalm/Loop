@@ -72,7 +72,9 @@ final class CarbEntryViewModel: ObservableObject {
     private var absorptionEditIsProgrammatic = false // needed for when absorption time is changed due to favorite food selection, so that absorptionTimeWasEdited does not get set to true
 
     @Published var absorptionTime: TimeInterval
-    let defaultAbsorptionTimes: CarbStore.DefaultAbsorptionTimes
+    @Published private(set) var defaultAbsorptionTimes: CarbStore.DefaultAbsorptionTimes
+    private let baseDefaultAbsorptionTimes: CarbStore.DefaultAbsorptionTimes
+    private let absorptionTimeSchedule: CarbAbsorptionTimeSchedule
     let minAbsorptionTime = LoopConstants.minCarbAbsorptionTime
     let maxAbsorptionTime = LoopConstants.maxCarbAbsorptionTime
     var absorptionRimesRange: ClosedRange<TimeInterval> {
@@ -87,23 +89,31 @@ final class CarbEntryViewModel: ObservableObject {
     private lazy var cancellables = Set<AnyCancellable>()
     
     /// Initalizer for when`CarbEntryView` is presented from the home screen
-    init(delegate: CarbEntryViewModelDelegate) {
+    init(delegate: CarbEntryViewModelDelegate, absorptionTimeSchedule: CarbAbsorptionTimeSchedule = UserDefaults.standard.carbAbsorptionTimeSchedule) {
+        let now = Date()
+        let defaults = absorptionTimeSchedule.defaultAbsorptionTimes(base: delegate.defaultAbsorptionTimes, at: now)
         self.delegate = delegate
-        self.absorptionTime = delegate.defaultAbsorptionTimes.medium
-        self.defaultAbsorptionTimes = delegate.defaultAbsorptionTimes
+        self.time = now
+        self.absorptionTime = defaults.medium
+        self.defaultAbsorptionTimes = defaults
+        self.baseDefaultAbsorptionTimes = delegate.defaultAbsorptionTimes
+        self.absorptionTimeSchedule = absorptionTimeSchedule
         self.shouldBeginEditingQuantity = true
         
         observeAbsorptionTimeChange()
+        observeMealTimeChange()
         observeFavoriteFoodChange()
         observeFavoriteFoodIndexChange()
         observeLoopUpdates()
     }
     
     /// Initalizer for when`CarbEntryView` has an entry to edit
-    init(delegate: CarbEntryViewModelDelegate, originalCarbEntry: StoredCarbEntry) {
+    init(delegate: CarbEntryViewModelDelegate, originalCarbEntry: StoredCarbEntry, absorptionTimeSchedule: CarbAbsorptionTimeSchedule = UserDefaults.standard.carbAbsorptionTimeSchedule) {
         self.delegate = delegate
         self.originalCarbEntry = originalCarbEntry
-        self.defaultAbsorptionTimes = delegate.defaultAbsorptionTimes
+        self.defaultAbsorptionTimes = absorptionTimeSchedule.defaultAbsorptionTimes(base: delegate.defaultAbsorptionTimes, at: originalCarbEntry.startDate)
+        self.baseDefaultAbsorptionTimes = delegate.defaultAbsorptionTimes
+        self.absorptionTimeSchedule = absorptionTimeSchedule
 
         self.carbsQuantity = originalCarbEntry.quantity.doubleValue(for: preferredCarbUnit)
         self.time = originalCarbEntry.startDate
@@ -301,6 +311,30 @@ final class CarbEntryViewModel: ObservableObject {
         }
     }
     
+    private func observeMealTimeChange() {
+        $time
+            .dropFirst()
+            .sink { [weak self] newTime in
+                self?.mealTimeChanged(to: newTime)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func mealTimeChanged(to newTime: Date) {
+        let previousMedium = defaultAbsorptionTimes.medium
+        defaultAbsorptionTimes = absorptionTimeSchedule.defaultAbsorptionTimes(base: baseDefaultAbsorptionTimes, at: newTime)
+        if let newAbsorptionTime = CarbAbsorptionTimeSchedule.absorptionTimeAfterMealTimeChange(
+            current: absorptionTime,
+            previousMedium: previousMedium,
+            newMedium: defaultAbsorptionTimes.medium,
+            wasEdited: absorptionTimeWasEdited,
+            usesCustomFoodType: usesCustomFoodType
+        ) {
+            absorptionEditIsProgrammatic = true
+            absorptionTime = newAbsorptionTime
+        }
+    }
+
     private func observeAbsorptionTimeChange() {
         $absorptionTime
             .receive(on: RunLoop.main)

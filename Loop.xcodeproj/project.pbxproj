@@ -12,6 +12,7 @@
 		1419606A28D955BC00BA86E0 /* MockKitUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C101947127DD473C004E7EB8 /* MockKitUI.framework */; };
 		142CB7592A60BF2E0075748A /* EditMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142CB7582A60BF2E0075748A /* EditMode.swift */; };
 		142CB75B2A60BFC30075748A /* FavoriteFoodsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142CB75A2A60BFC30075748A /* FavoriteFoodsView.swift */; };
+		B851DDB674924B7A2BC066A4 /* CarbAbsorptionScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633F7A15CC8D84EE206E1B5F /* CarbAbsorptionScheduleView.swift */; };
 		1452F4A92A851C9400F8B9E4 /* AddEditFavoriteFoodViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1452F4A82A851C9400F8B9E4 /* AddEditFavoriteFoodViewModel.swift */; };
 		1452F4AB2A851EDF00F8B9E4 /* AddEditFavoriteFoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1452F4AA2A851EDF00F8B9E4 /* AddEditFavoriteFoodView.swift */; };
 		1452F4AD2A851F8800F8B9E4 /* HowAbsorptionTimeWorksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1452F4AC2A851F8800F8B9E4 /* HowAbsorptionTimeWorksView.swift */; };
@@ -365,6 +366,7 @@
 		A9DCF32A25B0FABF00C89088 /* LoopUIColorPalette+Default.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9DCF2D525B0F3C500C89088 /* LoopUIColorPalette+Default.swift */; };
 		A9DF02CB24F72B9E00B7C988 /* CriticalEventLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9DF02CA24F72B9E00B7C988 /* CriticalEventLogTests.swift */; };
 		A9DFAFB324F0415E00950D1E /* CarbBackfillRequestUserInfoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9DFAFB224F0415E00950D1E /* CarbBackfillRequestUserInfoTests.swift */; };
+		5B33C730CA58C884B0C4ADD9 /* CarbAbsorptionTimeScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC9A50BB0BB9FF38518BB3D /* CarbAbsorptionTimeScheduleTests.swift */; };
 		A9DFAFB524F048A000950D1E /* WatchHistoricalCarbsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9DFAFB424F048A000950D1E /* WatchHistoricalCarbsTests.swift */; };
 		A9F5F1F5251050EC00E7C8A4 /* ZipArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5F1F4251050EC00E7C8A4 /* ZipArchiveTests.swift */; };
 		A9F66FC3247F451500096EA7 /* UIDevice+Loop.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F66FC2247F451500096EA7 /* UIDevice+Loop.swift */; };
@@ -482,6 +484,7 @@
 		C1AD4200256D61E500164DDD /* Comparable.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1AD41FF256D61E500164DDD /* Comparable.swift */; };
 		C1AF062329426300002C1B19 /* ManualGlucoseEntryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1AF062229426300002C1B19 /* ManualGlucoseEntryRow.swift */; };
 		C1C660D1252E4DD5009B5C32 /* LoopConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C660D0252E4DD5009B5C32 /* LoopConstants.swift */; };
+		D7742CF2272F4CAC0FD5FFD4 /* CarbAbsorptionTimeSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CF95CFE495C14434F241638 /* CarbAbsorptionTimeSchedule.swift */; };
 		C1CCF1122858FA900035389C /* LoopCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 43D9FFCF21EAE05D00AF44BF /* LoopCore.framework */; };
 		C1CCF1172858FBAD0035389C /* SwiftCharts in Frameworks */ = {isa = PBXBuildFile; productRef = C1CCF1162858FBAD0035389C /* SwiftCharts */; };
 		C1D0B6302986D4D90098D215 /* LocalizedString.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D0B62F2986D4D90098D215 /* LocalizedString.swift */; };
@@ -762,6 +765,7 @@
 /* Begin PBXFileReference section */
 		142CB7582A60BF2E0075748A /* EditMode.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EditMode.swift; sourceTree = "<group>"; };
 		142CB75A2A60BFC30075748A /* FavoriteFoodsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FavoriteFoodsView.swift; sourceTree = "<group>"; };
+		633F7A15CC8D84EE206E1B5F /* CarbAbsorptionScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarbAbsorptionScheduleView.swift; sourceTree = "<group>"; };
 		1452F4A82A851C9400F8B9E4 /* AddEditFavoriteFoodViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddEditFavoriteFoodViewModel.swift; sourceTree = "<group>"; };
 		1452F4AA2A851EDF00F8B9E4 /* AddEditFavoriteFoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddEditFavoriteFoodView.swift; sourceTree = "<group>"; };
 		1452F4AC2A851F8800F8B9E4 /* HowAbsorptionTimeWorksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HowAbsorptionTimeWorksView.swift; sourceTree = "<group>"; };
@@ -1173,6 +1177,7 @@
 		A9DCF2D525B0F3C500C89088 /* LoopUIColorPalette+Default.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LoopUIColorPalette+Default.swift"; sourceTree = "<group>"; };
 		A9DF02CA24F72B9E00B7C988 /* CriticalEventLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriticalEventLogTests.swift; sourceTree = "<group>"; };
 		A9DFAFB224F0415E00950D1E /* CarbBackfillRequestUserInfoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarbBackfillRequestUserInfoTests.swift; sourceTree = "<group>"; };
+		2AC9A50BB0BB9FF38518BB3D /* CarbAbsorptionTimeScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarbAbsorptionTimeScheduleTests.swift; sourceTree = "<group>"; };
 		A9DFAFB424F048A000950D1E /* WatchHistoricalCarbsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHistoricalCarbsTests.swift; sourceTree = "<group>"; };
 		A9F5F1F4251050EC00E7C8A4 /* ZipArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipArchiveTests.swift; sourceTree = "<group>"; };
 		A9F66FC2247F451500096EA7 /* UIDevice+Loop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIDevice+Loop.swift"; sourceTree = "<group>"; };
@@ -1306,6 +1311,7 @@
 		C1C3127F297E4C0400296DA4 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/Intents.strings; sourceTree = "<group>"; };
 		C1C5357529C6346A00E32DF9 /* cs */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = cs; path = cs.lproj/Intents.strings; sourceTree = "<group>"; };
 		C1C660D0252E4DD5009B5C32 /* LoopConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopConstants.swift; sourceTree = "<group>"; };
+		2CF95CFE495C14434F241638 /* CarbAbsorptionTimeSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarbAbsorptionTimeSchedule.swift; sourceTree = "<group>"; };
 		C1D0B62F2986D4D90098D215 /* LocalizedString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizedString.swift; sourceTree = "<group>"; };
 		C1D197FE232CF92D0096D646 /* capture-build-details.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = "capture-build-details.sh"; sourceTree = "<group>"; };
 		C1D289B422F90A52003FFBD9 /* BasalDeliveryState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasalDeliveryState.swift; sourceTree = "<group>"; };
@@ -1671,6 +1677,7 @@
 				B40D07C6251A89D500C1C6D7 /* GlucoseDisplay.swift */,
 				43C2FAE01EB656A500364AFF /* GlucoseEffectVelocity.swift */,
 				C1C660D0252E4DD5009B5C32 /* LoopConstants.swift */,
+				2CF95CFE495C14434F241638 /* CarbAbsorptionTimeSchedule.swift */,
 				436A0DA41D236A2A00104B24 /* LoopError.swift */,
 				E9C00EF424C623EF00628F35 /* LoopSettings+Loop.swift */,
 				A9B996EF27235191002DC09C /* LoopWarning.swift */,
@@ -1979,6 +1986,7 @@
 				C191D2A025B3ACAA00C26C0B /* DosingStrategySelectionView.swift */,
 				149A28E32A8A63A700052EDF /* FavoriteFoodDetailView.swift */,
 				142CB75A2A60BFC30075748A /* FavoriteFoodsView.swift */,
+				633F7A15CC8D84EE206E1B5F /* CarbAbsorptionScheduleView.swift */,
 				43D381611EBD9759007F8C8F /* HeaderValuesTableViewCell.swift */,
 				1452F4AC2A851F8800F8B9E4 /* HowAbsorptionTimeWorksView.swift */,
 				B43CF07D29434EC4008A520B /* HowMuteAlertWorkView.swift */,
@@ -2447,6 +2455,7 @@
 			isa = PBXGroup;
 			children = (
 				A9DFAFB224F0415E00950D1E /* CarbBackfillRequestUserInfoTests.swift */,
+				2AC9A50BB0BB9FF38518BB3D /* CarbAbsorptionTimeScheduleTests.swift */,
 				A963B279252CEBAE0062AA12 /* SetBolusUserInfoTests.swift */,
 				A9DFAFB424F048A000950D1E /* WatchHistoricalCarbsTests.swift */,
 				C19008FF252271BB00721625 /* SimpleBolusCalculatorTests.swift */,
@@ -3433,6 +3442,7 @@
 				1DA649A9244126DA00F61E75 /* InAppModalAlertScheduler.swift in Sources */,
 				43B260491ED248FB008CAA77 /* CarbEntryTableViewCell.swift in Sources */,
 				142CB75B2A60BFC30075748A /* FavoriteFoodsView.swift in Sources */,
+				B851DDB674924B7A2BC066A4 /* CarbAbsorptionScheduleView.swift in Sources */,
 				A9D5C5B625DC6C6A00534873 /* LoopAppManager.swift in Sources */,
 				4302F4E11D4E9C8900F0FCAF /* TextFieldTableViewController.swift in Sources */,
 				1452F4AB2A851EDF00F8B9E4 /* AddEditFavoriteFoodView.swift in Sources */,
@@ -3580,6 +3590,7 @@
 				438D42FB1D7D11A4003244B0 /* PredictionInputEffectTableViewCell.swift in Sources */,
 				89A1B66E24ABFDF800117AC2 /* SupportedBolusVolumesUserInfo.swift in Sources */,
 				C1C660D1252E4DD5009B5C32 /* LoopConstants.swift in Sources */,
+				D7742CF2272F4CAC0FD5FFD4 /* CarbAbsorptionTimeSchedule.swift in Sources */,
 				432E73CB1D24B3D6009AD15D /* RemoteDataServicesManager.swift in Sources */,
 				C18913B52524F24C007B0683 /* DeviceDataManager+SimpleBolusViewModelDelegate.swift in Sources */,
 				7E69CFFC2A16A77E00203CBD /* ResetLoopManager.swift in Sources */,
@@ -3736,6 +3747,7 @@
 				C16B984026B4898800256B05 /* DoseEnactorTests.swift in Sources */,
 				A9A63F8E246B271600588D5B /* NSTimeInterval.swift in Sources */,
 				A9DFAFB324F0415E00950D1E /* CarbBackfillRequestUserInfoTests.swift in Sources */,
+				5B33C730CA58C884B0C4ADD9 /* CarbAbsorptionTimeScheduleTests.swift in Sources */,
 				A963B27A252CEBAE0062AA12 /* SetBolusUserInfoTests.swift in Sources */,
 				A9DFAFB524F048A000950D1E /* WatchHistoricalCarbsTests.swift in Sources */,
 				C16575732538AFF6004AE16E /* CGMStalenessMonitorTests.swift in Sources */,
