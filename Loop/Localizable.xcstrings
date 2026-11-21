@@ -15028,6 +15028,16 @@
         }
       }
     },
+    "Default absorption time for new carb entries, by time of day of the meal." : {
+      "localizations" : {
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Förvald absorptionstid för nya kolhydratposter, efter vilken tid på dygnet måltiden äts."
+          }
+        }
+      }
+    },
     "Default by Time of Day" : {
       "localizations" : {
         "sv" : {
@@ -29489,6 +29499,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "关闭"
+          }
+        }
+      }
+    },
+    "Off (3 h for 🌮)" : {
+      "localizations" : {
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Av (3 h för 🌮)"
           }
         }
       }

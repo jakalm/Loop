@@ -50,7 +50,6 @@ public struct SettingsView: View {
             }
             
             case favoriteFoods
-            case carbAbsorptionSchedule
         }
     }
     
@@ -120,8 +119,6 @@ public struct SettingsView: View {
                 switch sheet {
                 case .favoriteFoods:
                     FavoriteFoodsView()
-                case .carbAbsorptionSchedule:
-                    CarbAbsorptionScheduleView()
                 }
             }
         }
@@ -260,7 +257,8 @@ extension SettingsView {
                 sensitivityOverridesEnabled: FeatureFlags.sensitivityOverridesEnabled,
                 adultChildInsulinModelSelectionEnabled: FeatureFlags.adultChildInsulinModelSelectionEnabled,
                 delegate: viewModel.therapySettingsViewModelDelegate
-            )
+            ),
+            additionalCarbSettings: [.carbAbsorptionSchedule]
         )
         .environmentObject(displayGlucosePreference)
         .environment(\.dismissAction, self.dismiss)
@@ -281,12 +279,6 @@ extension SettingsView {
                             label: NSLocalizedString("Therapy Settings", comment: "Title text for button to Therapy Settings"),
                             descriptiveText: NSLocalizedString("Diabetes Treatment", comment: "Descriptive text for Therapy Settings"))
             }
-
-            LargeButton(action: { sheet = .carbAbsorptionSchedule },
-                        includeArrow: true,
-                        imageView: Image(systemName: "clock").resizable().aspectRatio(contentMode: .fit).padding(12).foregroundColor(carbTintColor),
-                        label: String(localized: "Carb Absorption Times", comment: "Title for carb absorption time schedule view"),
-                        descriptiveText: String(localized: "Default by Time of Day"))
 
             ForEach(pluginMenuItems.filter {$0.section == .configuration}) { item in
                 item.view
