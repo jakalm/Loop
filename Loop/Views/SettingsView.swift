@@ -282,6 +282,12 @@ extension SettingsView {
                             descriptiveText: NSLocalizedString("Diabetes Treatment", comment: "Descriptive text for Therapy Settings"))
             }
 
+            LargeButton(action: { sheet = .carbAbsorptionSchedule },
+                        includeArrow: true,
+                        imageView: Image(systemName: "clock").resizable().aspectRatio(contentMode: .fit).padding(12).foregroundColor(carbTintColor),
+                        label: String(localized: "Carb Absorption Times", comment: "Title for carb absorption time schedule view"),
+                        descriptiveText: String(localized: "Default by Time of Day"))
+
             ForEach(pluginMenuItems.filter {$0.section == .configuration}) { item in
                 item.view
             }
@@ -370,11 +376,6 @@ extension SettingsView {
                         imageView: Image("Favorite Foods Icon").renderingMode(.template).foregroundColor(carbTintColor),
                         label: "Favorite Foods",
                         descriptiveText: "Simplify Carb Entry")
-            LargeButton(action: { sheet = .carbAbsorptionSchedule },
-                        includeArrow: true,
-                        imageView: Image(systemName: "clock").resizable().aspectRatio(contentMode: .fit).padding(12).foregroundColor(carbTintColor),
-                        label: String(localized: "Carb Absorption Times", comment: "Title for carb absorption time schedule view"),
-                        descriptiveText: String(localized: "Default by Time of Day"))
         }
     }
     
