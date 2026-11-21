@@ -115,7 +115,7 @@ extension UserDefaults {
         get {
             guard let data = object(forKey: Key.carbAbsorptionTimeSchedule.rawValue) as? Data,
                   let schedule = try? JSONDecoder().decode(CarbAbsorptionTimeSchedule.self, from: data) else {
-                return .suggested
+                return .standard
             }
             return schedule
         }

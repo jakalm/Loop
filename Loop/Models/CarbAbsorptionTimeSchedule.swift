@@ -6,10 +6,12 @@
 //
 
 import Foundation
+import HealthKit
 import LoopKit
+import LoopCore
 
 /// Default carb absorption time by local time of day, used as the medium (🌮) absorption time for new carb entries.
-struct CarbAbsorptionTimeSchedule: Codable, Equatable {
+struct CarbAbsorptionTimeSchedule: Equatable {
     struct Item: Codable, Equatable, Identifiable {
         var id = UUID()
         /// Seconds since local midnight.
@@ -17,28 +19,22 @@ struct CarbAbsorptionTimeSchedule: Codable, Equatable {
         var absorptionTime: TimeInterval
     }
 
-    var isEnabled: Bool
     var items: [Item]
 
-    static let suggested = CarbAbsorptionTimeSchedule(
-        isEnabled: false,
-        items: [
-            Item(startTime: .hours(4), absorptionTime: .hours(2.5)),
-            Item(startTime: .hours(10), absorptionTime: .hours(4.5)),
-            Item(startTime: .hours(15), absorptionTime: .hours(4.5)),
-            Item(startTime: .hours(21), absorptionTime: .hours(5)),
-        ]
-    )
+    /// Loop's fixed medium absorption time all day.
+    static let standard = CarbAbsorptionTimeSchedule(items: [
+        Item(startTime: 0, absorptionTime: LoopCoreConstants.defaultCarbAbsorptionTimes.medium)
+    ])
 
     var sortedItems: [Item] {
         items.sorted { $0.startTime < $1.startTime }
     }
 
-    /// The scheduled absorption time for a meal at `date`, or nil when the schedule is off or empty.
+    /// The scheduled absorption time for a meal at `date`, or nil when the schedule is empty.
     /// Times before the first start belong to the last item, so the schedule wraps around midnight.
     func absorptionTime(at date: Date, calendar: Calendar = .current) -> TimeInterval? {
         let sorted = sortedItems
-        guard isEnabled, let last = sorted.last else {
+        guard let last = sorted.last else {
             return nil
         }
         let components = calendar.dateComponents([.hour, .minute, .second], from: date)
@@ -66,5 +62,42 @@ struct CarbAbsorptionTimeSchedule: Codable, Equatable {
             return nil
         }
         return newMedium
+    }
+}
+
+extension CarbAbsorptionTimeSchedule: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case items
+        case isEnabled // only in schedules saved by an earlier version, where it could be turned off
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let items = try container.decode([Item].self, forKey: .items)
+        let isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        self.items = isEnabled && !items.isEmpty ? items : Self.standard.items
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(items, forKey: .items)
+    }
+}
+
+extension CarbAbsorptionTimeSchedule {
+    /// The schedule in hours for the schedule editors, which start at midnight.
+    var hourSchedule: DailyQuantitySchedule<Double> {
+        let sorted = sortedItems.isEmpty ? Self.standard.items : sortedItems
+        var items = sorted.map { RepeatingScheduleValue(startTime: $0.startTime, value: $0.absorptionTime / .hours(1)) }
+        if items[0].startTime > 0, let last = items.last {
+            items.insert(RepeatingScheduleValue(startTime: 0, value: last.value), at: 0)
+        }
+        return DailyQuantitySchedule(unit: .hour(), dailyItems: items)!
+    }
+
+    init(hourSchedule: DailyQuantitySchedule<Double>) {
+        self.init(items: hourSchedule.items.map {
+            Item(startTime: $0.startTime, absorptionTime: HKQuantity(unit: hourSchedule.unit, doubleValue: $0.value).doubleValue(for: .second()))
+        })
     }
 }

@@ -258,7 +258,7 @@ extension SettingsView {
                 adultChildInsulinModelSelectionEnabled: FeatureFlags.adultChildInsulinModelSelectionEnabled,
                 delegate: viewModel.therapySettingsViewModelDelegate
             ),
-            additionalCarbSettings: [.carbAbsorptionSchedule]
+            additionalCarbSettings: [.carbAbsorptionSchedule()]
         )
         .environmentObject(displayGlucosePreference)
         .environment(\.dismissAction, self.dismiss)
